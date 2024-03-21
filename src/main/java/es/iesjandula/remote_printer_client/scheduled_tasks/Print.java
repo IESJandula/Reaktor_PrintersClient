@@ -18,9 +18,13 @@ import javax.print.attribute.standard.Sides;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.printing.PDFPageable;
 import org.apache.pdfbox.printing.PDFPrintable;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -28,6 +32,7 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 
+import es.iesjandula.remote_printer_client.error.PrinterError;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -35,8 +40,8 @@ import lombok.extern.slf4j.Slf4j;
 public class Print
 {
 
-//	private String serverUrl = "http://192.168.1.215:8081/";
-	private String serverUrl = "http://localhost:8081/";
+	private String serverUrl = "http://192.168.1.215:8081/";
+//	private String serverUrl = "http://localhost:8081/";
 
 	@Scheduled(fixedDelayString = "1000", initialDelay = 2000)
 	public void print()
@@ -44,15 +49,17 @@ public class Print
 		log.info("intento de imprimir");
 		CloseableHttpClient httpClient = null;
 		CloseableHttpResponse response = null;
+		CloseableHttpResponse response2 = null;
 		InputStream inputStream = null;
 		// GETTING HTTP CLIENT
 		httpClient = HttpClients.createDefault();
 
 		HttpGet request = new HttpGet(this.serverUrl + "/get/prints");
+		HttpPost postRequest = new HttpPost(this.serverUrl + "/get/print/status");
+		String id = "";
 		try
 		{
 			response = httpClient.execute(request);
-
 			if (response.containsHeader("Content-Disposition"))
 			{
 				inputStream = response.getEntity().getContent();
@@ -62,9 +69,20 @@ public class Print
 				String color = response.getFirstHeader("color").getValue();
 				String vertical = response.getFirstHeader("orientation").getValue();
 				String faces = response.getFirstHeader("faces").getValue();
-
-				this.printFile(printerName, Integer.valueOf(numCopies), Boolean.valueOf(color),
-						Boolean.valueOf(vertical), Boolean.valueOf(faces), inputStream);
+				String user = response.getFirstHeader("user").getValue();
+				id = response.getFirstHeader("id").getValue();
+				postRequest.addHeader("id", id);
+				try
+				{
+					this.printFile(printerName, Integer.valueOf(numCopies), Boolean.valueOf(color),
+							Boolean.valueOf(vertical), Boolean.valueOf(faces), user, inputStream);
+					postRequest.addHeader("status", "done");
+					httpClient.execute(postRequest);
+				} catch (PrinterError e)
+				{
+					postRequest.addHeader("status", "error");
+					httpClient.execute(postRequest);
+				}
 			}
 		} catch (JsonProcessingException exception)
 		{
@@ -89,24 +107,39 @@ public class Print
 		}
 	}
 
-	public void printFile(String printerName, int numCopies, boolean color, boolean vertical, boolean faces,
-			InputStream input)
+	public void printFile(String printerName, int numCopies, boolean color, boolean vertical, boolean faces, String user,
+			InputStream input) throws PrinterError
 	{
 
 		// --- FLUJOS ---
 		DataInputStream dataInputStream = null;
 		PDDocument pdDocument = null;
+		PDDocument pdPageExtra = null;
+		PDPageContentStream contentStream = null;
 		try
 		{
 			dataInputStream = new DataInputStream(input);
 
 			PrintService selectedPrinter = this.selectPrinter(printerName);
-			
+
 			if (selectedPrinter != null)
 			{
 				PrinterJob printerJob = PrinterJob.getPrinterJob();
 
 				pdDocument = PDDocument.load(input);
+				pdPageExtra = new PDDocument();
+
+				PDPage newPage = new PDPage();
+				pdPageExtra.addPage(newPage);
+
+				contentStream = new PDPageContentStream(pdDocument, newPage);
+				contentStream.setFont(PDType1Font.HELVETICA_BOLD, 50);
+				contentStream.beginText();
+				contentStream.newLineAtOffset(100, 700);
+				contentStream.showText(user);
+				contentStream.endText();
+				contentStream.close();
+
 				PDFPageable pageable = new PDFPageable(pdDocument);
 				PageFormat format = pageable.getPageFormat(0);
 				if (vertical)
@@ -136,25 +169,32 @@ public class Print
 				}
 				attributeSet.add(new Copies(numCopies));
 				printerJob.print(attributeSet);
+				HashPrintRequestAttributeSet attributeSet2 = new HashPrintRequestAttributeSet();
+				attributeSet2.add(new Copies(1));
+				printerJob.setPrintable(new PDFPrintable(pdPageExtra));
+				printerJob.print(attributeSet2);
 
 			} else
 			{
 				String error = "Printer erronea";
 				log.error(error);
+				throw new PrinterError(error);
 			}
 
 		} catch (IOException exception)
 		{
 			String error = "Error leyendo el fichero";
 			log.error(error, exception);
+			throw new PrinterError(error, exception);
 
 		} catch (PrinterException exception)
 		{
 			String error = "Error imprimiendo";
 			log.error(error, exception);
+			throw new PrinterError(error, exception);
 		} finally
 		{
-			this.closePrintInputs(dataInputStream, pdDocument);
+			this.closePrintInputs(dataInputStream, pdDocument, pdPageExtra, contentStream);
 		}
 	}
 
@@ -165,16 +205,16 @@ public class Print
 		int i = 0;
 		while (i < printServices.length && selectedPrinter == null)
 		{
-			if (printServices[0].getName().equals(printerName))
+			if (printServices[i].getName().equals(printerName))
 			{
-				selectedPrinter = printServices[0];
+				selectedPrinter = printServices[i];
 			}
 			i++;
 		}
 		return selectedPrinter;
 	}
 
-	private void closePrintInputs(DataInputStream dataInputStream, PDDocument pdDocument)
+	private void closePrintInputs(DataInputStream dataInputStream, PDDocument pdDocument,PDDocument pdPageExtra ,PDPageContentStream contentStream)
 	{
 		if (dataInputStream != null)
 		{
@@ -192,6 +232,28 @@ public class Print
 			try
 			{
 				pdDocument.close();
+			} catch (IOException exception)
+			{
+				String message = "Error";
+				log.error(message, exception);
+			}
+		}
+		if (pdPageExtra != null)
+		{
+			try
+			{
+				pdPageExtra.close();
+			} catch (IOException exception)
+			{
+				String message = "Error";
+				log.error(message, exception);
+			}
+		}
+		if (contentStream != null)
+		{
+			try
+			{
+				contentStream.close();
 			} catch (IOException exception)
 			{
 				String message = "Error";
