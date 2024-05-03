@@ -41,7 +41,7 @@ public class SendPrinters
 
 		for (PrintService printer : printServices)
 		{
-			listPrinters.add(printer.getName());
+			 listPrinters.add(printer.getName());
 		}
 
 		HttpPost requestPost = new HttpPost(this.serverUrl + "/send/printers");
