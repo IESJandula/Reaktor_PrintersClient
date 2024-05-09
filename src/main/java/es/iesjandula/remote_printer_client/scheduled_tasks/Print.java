@@ -40,8 +40,8 @@ import lombok.extern.slf4j.Slf4j;
 public class Print
 {
 
-	private String serverUrl = "http://192.168.1.215:8081/";
-//	private String serverUrl = "http://localhost:8081/";
+//	private String serverUrl = "http://192.168.1.215:8081/";
+	private String serverUrl = "http://localhost:8082/";
 
 	@Scheduled(fixedDelayString = "1000", initialDelay = 2000)
 	public void print()

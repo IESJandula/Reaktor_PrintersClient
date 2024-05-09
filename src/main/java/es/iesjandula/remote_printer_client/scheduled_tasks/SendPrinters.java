@@ -27,8 +27,8 @@ import lombok.extern.slf4j.Slf4j;
 public class SendPrinters
 {
 
-	private String serverUrl = "http://192.168.1.215:8081/";
-//	private String serverUrl = "http://localhost:8081/";
+//	private String serverUrl = "http://192.168.1.215:8081/";
+	private String serverUrl = "http://localhost:8082/";
 
 	@Scheduled(fixedDelayString = "200", initialDelay = 100)
 	public void sendPrinters()
