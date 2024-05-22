@@ -14,9 +14,10 @@ on:
 
 jobs:
   build:
-
-    runs-on: self-hosted
-
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [self-hosted-linux, self-hosted-windows]
     steps:
     - uses: actions/checkout@v3
     - name: Build with Maven
