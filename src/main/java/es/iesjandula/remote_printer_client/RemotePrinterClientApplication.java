@@ -8,10 +8,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 @EntityScan(basePackages = "es.iesjandula.remote_printer_client")
-public class RemotePrinterClientApplication {
-
-	public static void main(String[] args) {
+public class RemotePrinterClientApplication
+{
+	public static void main(String[] args)
+	{
 		SpringApplication.run(RemotePrinterClientApplication.class, args);
 	}
-
 }
