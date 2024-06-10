@@ -24,7 +24,24 @@ namespace ConsoleApp1
                 ManagementObjectSearcher jobSearcher = new ManagementObjectSearcher("SELECT * FROM Win32_PrintJob WHERE Name='" + printerName + "'");
                 int jobCount = jobSearcher.Get().Count;
                 Console.WriteLine(jobCount);
+                string printerPortName = printer["PortName"].ToString();
+                Console.WriteLine(printerPortName);
+                if (!string.IsNullOrEmpty(printerPortName))
+                {
+                    ManagementObjectSearcher portSearcher = new ManagementObjectSearcher("SELECT * FROM Win32_TCPIPPrinterPort WHERE Name='" + printerPortName + "'");
+                    foreach (ManagementObject port in portSearcher.Get())
+                    {
+                        Console.WriteLine("Dirección IP de la impresora: " + port["HostAddress"]);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("No se pudo obtener el nombre del puerto de la impresora.");
+                }
             }
+
+            
+
         }
 
         public static string ConvertStatus(string status)
@@ -32,59 +49,59 @@ namespace ConsoleApp1
             switch (status)
             {
                 case "512":
-                    return "Busy: The printer is busy.";
+                    return "Ocupado: La impresora está ocupada.";
                 case "4194304":
-                    return "DoorOpen: A door on the printer is open.";
+                    return "Puerta Abierta: Una puerta de la impresora está abierta.";
                 case "2":
-                    return "Error: The printer cannot print due to an error condition.";
+                    return "Error: La impresora no puede imprimir debido a una condición de error.";
                 case "32768":
-                    return "Initializing: The printer is initializing.";
+                    return "Inicializando: La impresora se está inicializando.";
                 case "256":
-                    return "IOActive: The printer is exchanging data with the print server.";
+                    return "Intercambio Datos: La impresora está intercambiando datos con el servidor de impresión.";
                 case "32":
-                    return "ManualFeed: The printer is waiting for a user to place print media in the manual feed bin.";
+                    return "Alimentación Manual: La impresora está esperando que el usuario coloque el medio de impresión en la bandeja de alimentación manual.";
                 case "0":
-                    return "None: Status is not specified.";
+                    return "Ninguno: No se especifica el estado.";
                 case "4096":
-                    return "NotAvailable: Status information is unavailable.";
+                    return "No Disponible: La información de estado no está disponible.";
                 case "262144":
-                    return "NoToner: The printer is out of toner.";
+                    return "Sin Toner: La impresora no tiene toner.";
                 case "128":
-                    return "Offline: The printer is offline.";
+                    return "Fuera De Línea: La impresora está fuera de línea.";
                 case "2097152":
-                    return "OutOfMemory: The printer has no available memory.";
+                    return "Sin Memoria: La impresora no tiene memoria disponible.";
                 case "2048":
-                    return "OutputBinFull: The printer's output bin is full.";
+                    return "Bandeja Salida Llena: La bandeja de salida de la impresora está llena.";
                 case "524288":
-                    return "PagePunt: The printer is unable to print the current page.";
+                    return "Página No Impresa: La impresora no puede imprimir la página actual.";
                 case "8":
-                    return "PaperJam: The paper in the printer is jammed.";
+                    return "Atasco Papel: El papel en la impresora está atascado.";
                 case "16":
-                    return "PaperOut: The printer does not have, or is out of, the type of paper needed for the current print job.";
+                    return "Sin Papel: La impresora no tiene, o se ha quedado sin, el tipo de papel necesario para el trabajo de impresión actual.";
                 case "64":
-                    return "PaperProblem: The paper in the printer is causing an unspecified error condition.";
+                    return "Problema Papel: El papel en la impresora está causando una condición de error no especificada.";
                 case "1":
-                    return "Paused: The print queue is paused.";
+                    return "Pausado: La cola de impresión está pausada.";
                 case "4":
-                    return "PendingDeletion: The print queue is deleting a print job.";
+                    return "Eliminación Pendiente: La cola de impresión está eliminando un trabajo de impresión.";
                 case "16777216":
-                    return "PowerSave: The printer is in power save mode.";
+                    return "Ahorro De Energía: La impresora está en modo de ahorro de energía.";
                 case "1024":
-                    return "Printing: The device is printing.";
+                    return "Imprimiendo: El dispositivo está imprimiendo.";
                 case "16384":
-                    return "Processing: The device is doing some kind of work, which need not be printing if the device is a combination printer, fax machine, and scanner.";
+                    return "Procesando: El dispositivo está realizando algún tipo de trabajo, que no tiene por qué ser impresión si el dispositivo es una combinación de impresora, fax y escáner.";
                 case "8388608":
-                    return "ServerUnknown: The printer is in an error state.";
+                    return "Error Servidor Desconocido: La impresora está en un estado de error.";
                 case "131072":
-                    return "TonerLow: Only a small amount of toner remains in the printer.";
+                    return "Toner Bajo: Solo queda una pequeña cantidad de toner en la impresora.";
                 case "1048576":
-                    return "UserIntervention: The printer requires user action to correct an error condition.";
+                    return "Intervención Usuario: La impresora requiere una acción del usuario para corregir una condición de error.";
                 case "8192":
-                    return "Waiting: The printer is waiting for a print job.";
+                    return "Esperando: La impresora está esperando un trabajo de impresión.";
                 case "65536":
-                    return "WarmingUp: The printer is warming up.";
+                    return "Calentando: La impresora se está calentando.";
                 default:
-                    return "Unknown status code: " + status;
+                    return "Código de estado desconocido: " + status;
             }
         }
     }
