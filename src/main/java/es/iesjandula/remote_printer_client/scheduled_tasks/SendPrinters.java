@@ -34,33 +34,44 @@ public class SendPrinters
 //	private String serverUrl = "http://192.168.1.215:8081/";
 	private String serverUrl = "http://localhost:8082/";
 
+	/**
+	 * Metodo encargado de enviar la informacion de las impresoras
+	 */
 	@Scheduled(fixedDelayString = "200", initialDelay = 100)
 	public void sendPrinters()
 	{
 		CloseableHttpClient httpClient = null;
 		InputStream inputStream = null;
 		BufferedReader reader = null;
-		// GETTING HTTP CLIENT
 		httpClient = HttpClients.createDefault();
 		List<Printer> listPrinters = new ArrayList<Printer>();
+		//Pide la lista de todas las impresoras
 		PrintService[] printServices = PrintServiceLookup.lookupPrintServices(null, null);
 		try
 		{
+			//Creacion de los objetos print
 			for (PrintService printer : printServices)
 			{
-				Process process = Runtime.getRuntime().exec("cmd.exe /c ConsoleApp1.exe \"" +printer.getName() + "\"");
+				if(!printer.getName().equals("Microsoft XPS Document Writer") && 
+						!printer.getName().equals("Fax") && 
+						!printer.getName().equals("OneNote for Windows 10") &&
+						!printer.getName().equals("Send To OneNote 2016"))
+				{
+					Process process = Runtime.getRuntime().exec("cmd.exe /c ConsoleApp1.exe \"" +printer.getName() + "\"");
+					
+					inputStream = process.getInputStream();
+					String output = new String(inputStream.readAllBytes());
+					
+					
+					Scanner sc = new Scanner(output);
+					
+					listPrinters.add(new Printer(printer.getName(), Integer.valueOf(sc.nextLine()), sc.nextLine(), Integer.valueOf(sc.nextLine())));
+					
+					sc.close();
+				}
 				
-				inputStream = process.getInputStream();
-				String output = new String(inputStream.readAllBytes());
-				
-				
-				Scanner sc = new Scanner(output);
-				
-				listPrinters.add(new Printer(printer.getName(), Integer.valueOf(sc.nextLine()), sc.nextLine(), Integer.valueOf(sc.nextLine())));
-				
-				sc.close();
 			}
-
+			//Envio al servidor de la informacion
 			HttpPost requestPost = new HttpPost(this.serverUrl + "/send/printers");
 			requestPost.setHeader("Content-type", "application/json");
 
@@ -69,7 +80,6 @@ public class SendPrinters
 			entity = new StringEntity(new ObjectMapper().writeValueAsString(listPrinters));
 			requestPost.setEntity(entity);
 
-			// --- EJECUTAMOS LLAMADA ---
 			httpClient.execute(requestPost);
 		} catch (JsonProcessingException e)
 		{

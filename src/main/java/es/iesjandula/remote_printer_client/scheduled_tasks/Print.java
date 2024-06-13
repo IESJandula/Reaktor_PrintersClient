@@ -43,13 +43,15 @@ public class Print
 //	private String serverUrl = "http://192.168.1.215:8081/";
 	private String serverUrl = "http://localhost:8082/";
 
+	/**
+	 * Funcion que cada segundo pregunta al servidor si hay que imprimir algo y si lo hay lo imprime
+	 */
 	@Scheduled(fixedDelayString = "1000", initialDelay = 2000)
 	public void print()
 	{
 		log.info("intento de imprimir");
 		CloseableHttpClient httpClient = null;
 		CloseableHttpResponse response = null;
-		CloseableHttpResponse response2 = null;
 		InputStream inputStream = null;
 		// GETTING HTTP CLIENT
 		httpClient = HttpClients.createDefault();
@@ -59,11 +61,13 @@ public class Print
 		String id = "";
 		try
 		{
+			//Hace la peticion
 			response = httpClient.execute(request);
 			if (response.containsHeader("Content-Disposition"))
 			{
 				inputStream = response.getEntity().getContent();
-
+				
+				//Saca los parametros de la impresion
 				String numCopies = response.getFirstHeader("numCopies").getValue();
 				String printerName = response.getFirstHeader("printerName").getValue();
 				String color = response.getFirstHeader("color").getValue();
@@ -74,6 +78,7 @@ public class Print
 				postRequest.addHeader("id", id);
 				try
 				{
+					//Imprime
 					this.printFile(printerName, Integer.valueOf(numCopies), Boolean.valueOf(color),
 							Boolean.valueOf(vertical), Boolean.valueOf(faces), user, inputStream);
 					postRequest.addHeader("status", "done");
@@ -107,11 +112,22 @@ public class Print
 		}
 	}
 
+	/**
+	 *  Imprime un documento con la configuración pasada como parametros
+	 * @param printerName
+	 * @param numCopies
+	 * @param color
+	 * @param vertical
+	 * @param faces
+	 * @param user
+	 * @param input
+	 * @throws PrinterError
+	 */
 	public void printFile(String printerName, int numCopies, boolean color, boolean vertical, boolean faces, String user,
 			InputStream input) throws PrinterError
 	{
 
-		// --- FLUJOS ---
+		//Flujos
 		DataInputStream dataInputStream = null;
 		PDDocument pdDocument = null;
 		PDDocument pdPageExtra = null;
@@ -120,19 +136,23 @@ public class Print
 		{
 			dataInputStream = new DataInputStream(input);
 
+			//Elegir la impresora
 			PrintService selectedPrinter = this.selectPrinter(printerName);
-
+			
 			if (selectedPrinter != null)
 			{
 				PrinterJob printerJob = PrinterJob.getPrinterJob();
-
+				
+				//Introducir el contenido del documento
 				pdDocument = PDDocument.load(input);
+				//Creacion de pagina con el nombre del usuario
 				pdPageExtra = new PDDocument();
-
 				PDPage newPage = new PDPage();
 				pdPageExtra.addPage(newPage);
 
 				contentStream = new PDPageContentStream(pdDocument, newPage);
+				
+				//Introduccion del texto de la pagina del usuario
 				contentStream.setFont(PDType1Font.HELVETICA_BOLD, 50);
 				contentStream.beginText();
 				contentStream.newLineAtOffset(100, 700);
@@ -140,6 +160,7 @@ public class Print
 				contentStream.endText();
 				contentStream.close();
 
+				//Configuracion de la impresion
 				PDFPageable pageable = new PDFPageable(pdDocument);
 				PageFormat format = pageable.getPageFormat(0);
 				if (vertical)
@@ -168,9 +189,13 @@ public class Print
 					attributeSet.add(Sides.ONE_SIDED);
 				}
 				attributeSet.add(new Copies(numCopies));
+				
+				//Impresion del documento
 				printerJob.print(attributeSet);
 				HashPrintRequestAttributeSet attributeSet2 = new HashPrintRequestAttributeSet();
 				attributeSet2.add(new Copies(1));
+				
+				//Impresion de la pagina del usuario
 				printerJob.setPrintable(new PDFPrintable(pdPageExtra));
 				printerJob.print(attributeSet2);
 
@@ -198,6 +223,11 @@ public class Print
 		}
 	}
 
+	/**
+	 * Metodo que selecciona la impresora
+	 * @param printerName
+	 * @return
+	 */
 	private PrintService selectPrinter(String printerName)
 	{
 		PrintService[] printServices = PrintServiceLookup.lookupPrintServices(null, null);
@@ -214,6 +244,13 @@ public class Print
 		return selectedPrinter;
 	}
 
+	/**
+	 *  Metodo encargado de cerrar todos los flujos utilizados en el metodo print
+	 * @param dataInputStream
+	 * @param pdDocument
+	 * @param pdPageExtra
+	 * @param contentStream
+	 */
 	private void closePrintInputs(DataInputStream dataInputStream, PDDocument pdDocument,PDDocument pdPageExtra ,PDPageContentStream contentStream)
 	{
 		if (dataInputStream != null)
@@ -262,6 +299,11 @@ public class Print
 		}
 	}
 
+	/**
+	 * Metodo encargado de cerrar todos los flujos utilizados la peticion
+	 * @param httpClient
+	 * @param response
+	 */
 	private void closeHttpClientResponse(CloseableHttpClient httpClient, CloseableHttpResponse response)
 	{
 		if (httpClient != null)
