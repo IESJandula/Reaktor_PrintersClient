@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 
@@ -33,6 +34,8 @@ public class SendPrinters
 
 //	private String serverUrl = "http://192.168.1.215:8081/";
 	private String serverUrl = "http://localhost:8082/";
+	
+	private List<String> printersBanned = Arrays.asList("Microsoft XPS Document Writer", "Fax", "OneNote for Windows 10", "Send To OneNote 2016");
 
 	/**
 	 * Metodo encargado de enviar la informacion de las impresoras
@@ -52,11 +55,8 @@ public class SendPrinters
 			//Creacion de los objetos print
 			for (PrintService printer : printServices)
 			{
-//				if(!printer.getName().equals("Microsoft XPS Document Writer") && 
-//						!printer.getName().equals("Fax") && 
-//						!printer.getName().equals("OneNote for Windows 10") &&
-//						!printer.getName().equals("Send To OneNote 2016"))
-//				{
+				if(!printersBanned.contains(printer.getName()))
+				{
 					Process process = Runtime.getRuntime().exec("cmd.exe /c ConsoleApp1.exe \"" +printer.getName() + "\"");
 					
 					inputStream = process.getInputStream();
@@ -68,7 +68,7 @@ public class SendPrinters
 					listPrinters.add(new Printer(printer.getName(), Integer.valueOf(sc.nextLine()), sc.nextLine(), Integer.valueOf(sc.nextLine())));
 					
 					sc.close();
-//				}
+				}
 				
 			}
 			//Envio al servidor de la informacion
