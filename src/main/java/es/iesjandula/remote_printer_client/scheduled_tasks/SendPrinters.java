@@ -52,11 +52,11 @@ public class SendPrinters
 			//Creacion de los objetos print
 			for (PrintService printer : printServices)
 			{
-				if(!printer.getName().equals("Microsoft XPS Document Writer") && 
-						!printer.getName().equals("Fax") && 
-						!printer.getName().equals("OneNote for Windows 10") &&
-						!printer.getName().equals("Send To OneNote 2016"))
-				{
+//				if(!printer.getName().equals("Microsoft XPS Document Writer") && 
+//						!printer.getName().equals("Fax") && 
+//						!printer.getName().equals("OneNote for Windows 10") &&
+//						!printer.getName().equals("Send To OneNote 2016"))
+//				{
 					Process process = Runtime.getRuntime().exec("cmd.exe /c ConsoleApp1.exe \"" +printer.getName() + "\"");
 					
 					inputStream = process.getInputStream();
@@ -68,7 +68,7 @@ public class SendPrinters
 					listPrinters.add(new Printer(printer.getName(), Integer.valueOf(sc.nextLine()), sc.nextLine(), Integer.valueOf(sc.nextLine())));
 					
 					sc.close();
-				}
+//				}
 				
 			}
 			//Envio al servidor de la informacion
