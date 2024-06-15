@@ -1,0 +1,5 @@
+server:
+  port: 8081
+printer:
+  server:
+    url: "http://localhost:8082/"

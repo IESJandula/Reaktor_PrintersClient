@@ -18,6 +18,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -32,7 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 public class SendPrinters
 {
 
-//	private String serverUrl = "http://192.168.1.215:8081/";
+	@Value("${reaktor.server.url}")
 	private String serverUrl = "http://localhost:8082/";
 	
 	private List<String> printersBanned = Arrays.asList("Microsoft XPS Document Writer", "Fax", "OneNote for Windows 10", "Send To OneNote 2016");

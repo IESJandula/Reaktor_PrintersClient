@@ -27,6 +27,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.printing.PDFPageable;
 import org.apache.pdfbox.printing.PDFPrintable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -40,8 +41,8 @@ import lombok.extern.slf4j.Slf4j;
 public class Print
 {
 
-//	private String serverUrl = "http://192.168.1.215:8081/";
-	private String serverUrl = "http://localhost:8082/";
+	@Value("${reaktor.server.url}")
+	private String serverUrl ;
 
 	/**
 	 * Funcion que cada segundo pregunta al servidor si hay que imprimir algo y si lo hay lo imprime
