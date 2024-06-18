@@ -1,5 +1,6 @@
 server:
   port: 8081
 printer:
+  banned: Microsoft XPS Document Writer, Fax, OneNote for Windows 10, Send To OneNote 2016, Microsoft Print to PDF, AnyDesk Printer
   server:
     url: "http://localhost:8082/"

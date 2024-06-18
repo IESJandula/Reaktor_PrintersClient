@@ -36,12 +36,13 @@ public class SendPrinters
 	@Value("${printer.server.url}")
 	private String serverUrl = "http://localhost:8082/";
 	
-	private List<String> printersBanned = Arrays.asList("Microsoft XPS Document Writer", "Fax", "OneNote for Windows 10", "Send To OneNote 2016", "Microsoft Print to PDF");
+	@Value("${printer.banned}")
+	private String[] banned ;
 
 	/**
 	 * Metodo encargado de enviar la informacion de las impresoras
 	 */
-	@Scheduled(fixedDelayString = "200", initialDelay = 100)
+	@Scheduled(fixedDelayString = "1000", initialDelay = 100)
 	public void sendPrinters()
 	{
 		CloseableHttpClient httpClient = null;
@@ -53,6 +54,8 @@ public class SendPrinters
 		PrintService[] printServices = PrintServiceLookup.lookupPrintServices(null, null);
 		try
 		{
+			List<String> printersBanned = Arrays.asList(this.banned) ;
+			
 			//Creacion de los objetos print
 			for (PrintService printer : printServices)
 			{
