@@ -33,7 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 public class SendPrinters
 {
 
-	@Value("${reaktor.server.url}")
+	@Value("${printer.server.url}")
 	private String serverUrl = "http://localhost:8082/";
 	
 	private List<String> printersBanned = Arrays.asList("Microsoft XPS Document Writer", "Fax", "OneNote for Windows 10", "Send To OneNote 2016", "Microsoft Print to PDF");
