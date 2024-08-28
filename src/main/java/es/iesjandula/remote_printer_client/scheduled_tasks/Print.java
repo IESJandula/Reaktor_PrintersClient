@@ -70,7 +70,7 @@ public class Print
 				
 				//Saca los parametros de la impresion
 				String numCopies = response.getFirstHeader("numCopies").getValue();
-				String printerName = response.getFirstHeader("printerName").getValue();
+				String printer = response.getFirstHeader("printer").getValue();
 				String color = response.getFirstHeader("color").getValue();
 				String vertical = response.getFirstHeader("orientation").getValue();
 				String faces = response.getFirstHeader("faces").getValue();
@@ -80,7 +80,7 @@ public class Print
 				try
 				{
 					//Imprime
-					this.printFile(printerName, Integer.valueOf(numCopies), Boolean.valueOf(color),
+					this.printFile(printer, Integer.valueOf(numCopies), Boolean.valueOf(color),
 							Boolean.valueOf(vertical), Boolean.valueOf(faces), user, inputStream);
 					postRequest.addHeader("status", "done");
 					httpClient.execute(postRequest);
@@ -115,7 +115,7 @@ public class Print
 
 	/**
 	 *  Imprime un documento con la configuración pasada como parametros
-	 * @param printerName
+	 * @param printer
 	 * @param numCopies
 	 * @param color
 	 * @param vertical
@@ -124,7 +124,7 @@ public class Print
 	 * @param input
 	 * @throws PrinterError
 	 */
-	public void printFile(String printerName, int numCopies, boolean color, boolean vertical, boolean faces, String user,
+	public void printFile(String printer, int numCopies, boolean color, boolean vertical, boolean faces, String user,
 			InputStream input) throws PrinterError
 	{
 
@@ -138,7 +138,7 @@ public class Print
 			dataInputStream = new DataInputStream(input);
 
 			//Elegir la impresora
-			PrintService selectedPrinter = this.selectPrinter(printerName);
+			PrintService selectedPrinter = this.selectPrinter(printer);
 			
 			if (selectedPrinter != null)
 			{
@@ -226,17 +226,17 @@ public class Print
 
 	/**
 	 * Metodo que selecciona la impresora
-	 * @param printerName
+	 * @param printer
 	 * @return
 	 */
-	private PrintService selectPrinter(String printerName)
+	private PrintService selectPrinter(String printer)
 	{
 		PrintService[] printServices = PrintServiceLookup.lookupPrintServices(null, null);
 		PrintService selectedPrinter = null;
 		int i = 0;
 		while (i < printServices.length && selectedPrinter == null)
 		{
-			if (printServices[i].getName().equals(printerName))
+			if (printServices[i].getName().equals(printer))
 			{
 				selectedPrinter = printServices[i];
 			}
