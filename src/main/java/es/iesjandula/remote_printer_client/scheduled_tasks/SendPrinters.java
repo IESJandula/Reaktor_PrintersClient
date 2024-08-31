@@ -1,10 +1,8 @@
 package es.iesjandula.remote_printer_client.scheduled_tasks;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -32,9 +30,8 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class SendPrinters
 {
-
 	@Value("${printer.server.url}")
-	private String serverUrl = "http://localhost:8082/";
+	private String serverUrl ;
 	
 	@Value("${printer.banned}")
 	private String[] banned ;
@@ -42,106 +39,140 @@ public class SendPrinters
 	/**
 	 * Metodo encargado de enviar la informacion de las impresoras
 	 */
-	@Scheduled(fixedDelayString = "1000", initialDelay = 100)
+	@Scheduled(fixedDelayString = "${printer.sendPrinters.fixedDelayString}")
 	public void sendPrinters()
 	{
-		CloseableHttpClient httpClient = null;
-		InputStream inputStream = null;
-		BufferedReader reader = null;
-		httpClient = HttpClients.createDefault();
-		List<Printer> listPrinters = new ArrayList<Printer>();
-		//Pide la lista de todas las impresoras
-		PrintService[] printServices = PrintServiceLookup.lookupPrintServices(null, null);
+		List<Printer> listPrinters 	   = new ArrayList<Printer>() ;
+
+		// Pedimos la lista de todas las impresoras
+		PrintService[] printServices   = PrintServiceLookup.lookupPrintServices(null, null) ;
+		
+		// Introducimos aquí las banneadas
+		List<String> printersBanned    = Arrays.asList(this.banned) ;
+		
+		CloseableHttpClient httpClient = HttpClients.createDefault() ;
+		
 		try
 		{
-			List<String> printersBanned = Arrays.asList(this.banned) ;
-			
-			//Creacion de los objetos print
+			// Iteramos sobre todas las impresoras encontradas
 			for (PrintService printer : printServices)
 			{
+				// Si la impresora no está baneada, la procesamos
 				if(!printersBanned.contains(printer.getName()))
 				{
-					Process process = Runtime.getRuntime().exec("cmd.exe /c ConsoleApp1.exe \"" +printer.getName() + "\"");
-					
-					inputStream = process.getInputStream();
-					String output = new String(inputStream.readAllBytes());
-					
-					
-					Scanner sc = new Scanner(output);
-					
-					listPrinters.add(new Printer(printer.getName(), Integer.valueOf(sc.nextLine()), sc.nextLine(), Integer.valueOf(sc.nextLine())));
-					
-					sc.close();
+					this.obtenerInfoImpresora(listPrinters, printer) ;
 				}
-				
 			}
-			//Envio al servidor de la informacion
-			HttpPost requestPost = new HttpPost(this.serverUrl + "/send/printers");
-			requestPost.setHeader("Content-type", "application/json");
 
-			StringEntity entity;
-
-			entity = new StringEntity(new ObjectMapper().writeValueAsString(listPrinters));
-			requestPost.setEntity(entity);
-
-			httpClient.execute(requestPost);
-		} catch (JsonProcessingException e)
+			// Enviamos la petición POST
+			this.enviarPeticionPost(httpClient, listPrinters) ;
+		} 
+		catch (IOException ioException)
 		{
-			String error = "Error procesando info a json";
-			log.error(error, e);
-		} catch (UnsupportedEncodingException e)
+			log.error("IOException mientras se trataba de enviar el estado de las impresoras", ioException) ;
+		}
+		finally
 		{
-			String error = "Error unsupported encoding";
-			log.error(error, e);
-		} catch (ClientProtocolException e)
-		{
-			String error = "Error sendign printers";
-			log.error(error, e);
-		} catch (IOException e)
-		{
-			String error = "Error IO";
-			log.error(error, e);
-		}finally {
-			
 			if (httpClient != null)
 			{
 				try
 				{
-					httpClient.close();
-				} catch (IOException e)
+					httpClient.close() ;
+				}
+				catch (IOException ioException)
 				{
-					String error = "Error IO httpClient";
-					log.error(error, e);
+					log.error("IOException en httpClient mientras se cerraba el flujo de datos", ioException) ;
 				}
 			}
+		}
+	}
+
+	/**
+	 * @param listPrinters lista actual de impresoras
+	 * @param printer nueva impresora a consultar
+	 */
+	private void obtenerInfoImpresora(List<Printer> listPrinters, PrintService printer)
+	{
+		Process process 		= null ;
+		InputStream inputStream = null ;
+		Scanner scanner 		= null ; 
+		
+		try
+		{
+			// Lanzamos el proceso para que nos informe diciéndole que nos pase la información con tildes (primer comando)
+			process 	= Runtime.getRuntime().exec("cmd.exe /c chcp 65001 && ConsoleApp1.exe \"" + printer.getName() + "\"") ;
 			
-			if (reader != null)
+			// Obtenemos el flujo de entrada
+			inputStream = process.getInputStream() ;
+			
+			// Leemos con el scanner
+			scanner 	= new Scanner(inputStream, "UTF-8");
+
+			// Ignoramos la primera línea que es el mensaje de cambio de página de códigos
+			if (scanner.hasNextLine())
 			{
-				try
-				{
-					reader.close();
-				} catch (IOException e)
-				{
-					String error = "Error IO reader";
-					log.error(error, e);
-				}
+			    scanner.nextLine() ; // Ignoramos la línea de "Página de códigos activa: 65001"
 			}
-			
+
+			// Añadimos la impresora a la lista con los datos leídos
+			listPrinters.add(new Printer(printer.getName(), Integer.valueOf(scanner.nextLine()), scanner.nextLine(), Integer.valueOf(scanner.nextLine())));
+		}
+		catch (IOException ioException)
+		{
+			log.error("IOException mientras se obtenía información de la impresora " + printer.getName(), ioException) ;
+		}
+		finally
+		{
 			if (inputStream != null)
 			{
 				try
 				{
-					inputStream.close();
-				} catch (IOException e)
+					inputStream.close() ;
+				}
+				catch (IOException ioException)
 				{
-					String error = "Error IO inputStream";
-					log.error(error, e);
+					log.error("IOException en inputStream mientras se cerraba el flujo de datos", ioException) ;
 				}
 			}
 			
-			
+			if (scanner != null)
+			{
+				scanner.close() ;
+			}
 		}
-
 	}
 
+	/**
+	 * @param httpClient
+	 * @param listPrinters
+	 * @throws JsonProcessingException
+	 * @throws IOException
+	 * @throws ClientProtocolException
+	 */
+	private void enviarPeticionPost(CloseableHttpClient httpClient, List<Printer> listPrinters) throws IOException
+	{
+		try
+		{
+			// Asegúrate de que tu ObjectMapper esté correctamente configurado
+			ObjectMapper objectMapper = new ObjectMapper() ;
+			
+			// Registrar automáticamente cualquier módulo de Jackson necesario
+			objectMapper.findAndRegisterModules(); 
+	
+			// Configuración del HTTP POST con codificación UTF-8
+			HttpPost requestPost = new HttpPost(this.serverUrl + "/send/printers") ;
+			requestPost.setHeader("Content-type", "application/json") ;
+	
+			// Serialización de la entidad JSON asegurando UTF-8
+			StringEntity entity = new StringEntity(objectMapper.writeValueAsString(listPrinters), StandardCharsets.UTF_8) ;
+			requestPost.setEntity(entity) ;
+	
+			// Enviamos la petición
+			httpClient.execute(requestPost) ;
+		}
+		catch (IOException ioException)
+		{
+			log.error("IOException mientras se enviaba la petición POST con el estado de las impresoras", ioException) ;
+		}
+	}
 }

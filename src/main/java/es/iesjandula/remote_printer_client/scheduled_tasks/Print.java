@@ -40,17 +40,15 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class Print
 {
-
 	@Value("${printer.server.url}")
 	private String serverUrl ;
 
 	/**
-	 * Funcion que cada segundo pregunta al servidor si hay que imprimir algo y si lo hay lo imprime
+	 * Funcion que cada X tiempo pregunta al servidor si hay que imprimir algo y si lo hay lo imprime
 	 */
-	@Scheduled(fixedDelayString = "1000", initialDelay = 2000)
+	@Scheduled(fixedDelayString = "${printer.print.fixedDelayString}")
 	public void print()
 	{
-		log.info("intento de imprimir");
 		CloseableHttpClient httpClient = null;
 		CloseableHttpResponse response = null;
 		InputStream inputStream = null;
