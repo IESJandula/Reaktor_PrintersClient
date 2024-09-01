@@ -11,7 +11,6 @@ import java.util.Scanner;
 import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
 
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -20,10 +19,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import es.iesjandula.remote_printer_client.models.Printer;
+import es.iesjandula.remote_printer_client.dto.DtoPrinter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -42,15 +40,15 @@ public class SendPrinters
 	@Scheduled(fixedDelayString = "${printer.sendPrinters.fixedDelayString}")
 	public void sendPrinters()
 	{
-		List<Printer> listPrinters 	   = new ArrayList<Printer>() ;
+		List<DtoPrinter> listDtoPrinters = new ArrayList<DtoPrinter>() ;
 
 		// Pedimos la lista de todas las impresoras
-		PrintService[] printServices   = PrintServiceLookup.lookupPrintServices(null, null) ;
+		PrintService[] printServices     = PrintServiceLookup.lookupPrintServices(null, null) ;
 		
 		// Introducimos aquí las banneadas
-		List<String> printersBanned    = Arrays.asList(this.banned) ;
+		List<String> printersBanned      = Arrays.asList(this.banned) ;
 		
-		CloseableHttpClient httpClient = HttpClients.createDefault() ;
+		CloseableHttpClient httpClient   = HttpClients.createDefault() ;
 		
 		try
 		{
@@ -60,12 +58,12 @@ public class SendPrinters
 				// Si la impresora no está baneada, la procesamos
 				if(!printersBanned.contains(printer.getName()))
 				{
-					this.obtenerInfoImpresora(listPrinters, printer) ;
+					this.obtenerInfoImpresora(listDtoPrinters, printer) ;
 				}
 			}
 
 			// Enviamos la petición POST
-			this.enviarPeticionPost(httpClient, listPrinters) ;
+			this.enviarPeticionPost(httpClient, listDtoPrinters) ;
 		} 
 		catch (IOException ioException)
 		{
@@ -88,10 +86,10 @@ public class SendPrinters
 	}
 
 	/**
-	 * @param listPrinters lista actual de impresoras
+	 * @param listDtoPrinters lista actual de impresoras DTO
 	 * @param printer nueva impresora a consultar
 	 */
-	private void obtenerInfoImpresora(List<Printer> listPrinters, PrintService printer)
+	private void obtenerInfoImpresora(List<DtoPrinter> listDtoPrinters, PrintService printer)
 	{
 		Process process 		= null ;
 		InputStream inputStream = null ;
@@ -115,7 +113,7 @@ public class SendPrinters
 			}
 
 			// Añadimos la impresora a la lista con los datos leídos
-			listPrinters.add(new Printer(printer.getName(), Integer.valueOf(scanner.nextLine()), scanner.nextLine(), Integer.valueOf(scanner.nextLine())));
+			listDtoPrinters.add(new DtoPrinter(printer.getName(), Integer.valueOf(scanner.nextLine()), scanner.nextLine(), Integer.valueOf(scanner.nextLine())));
 		}
 		catch (IOException ioException)
 		{
@@ -143,13 +141,11 @@ public class SendPrinters
 	}
 
 	/**
-	 * @param httpClient
-	 * @param listPrinters
-	 * @throws JsonProcessingException
-	 * @throws IOException
-	 * @throws ClientProtocolException
+	 * @param httpClient HTTP Client
+	 * @param listDtoPrinters lista de DTO printers
+	 * @throws IOException con un error mientras se enviaba la petición POST con el estado de las impresoras
 	 */
-	private void enviarPeticionPost(CloseableHttpClient httpClient, List<Printer> listPrinters) throws IOException
+	private void enviarPeticionPost(CloseableHttpClient httpClient, List<DtoPrinter> listDtoPrinters) throws IOException
 	{
 		try
 		{
@@ -160,11 +156,11 @@ public class SendPrinters
 			objectMapper.findAndRegisterModules(); 
 	
 			// Configuración del HTTP POST con codificación UTF-8
-			HttpPost requestPost = new HttpPost(this.serverUrl + "/send/printers") ;
+			HttpPost requestPost = new HttpPost(this.serverUrl + "/printers/client/printers") ;
 			requestPost.setHeader("Content-type", "application/json") ;
 	
 			// Serialización de la entidad JSON asegurando UTF-8
-			StringEntity entity = new StringEntity(objectMapper.writeValueAsString(listPrinters), StandardCharsets.UTF_8) ;
+			StringEntity entity = new StringEntity(objectMapper.writeValueAsString(listDtoPrinters), StandardCharsets.UTF_8) ;
 			requestPost.setEntity(entity) ;
 	
 			// Enviamos la petición
