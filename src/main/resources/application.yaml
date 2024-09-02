@@ -8,3 +8,6 @@ printer:
   banned: Microsoft XPS Document Writer, Fax, OneNote for Windows 10, Send To OneNote 2016, Microsoft Print to PDF, AnyDesk Printer, OneNote (Desktop)
   server:
     url: "http://localhost:8082/"
+logging:
+    level:
+        root: INFO

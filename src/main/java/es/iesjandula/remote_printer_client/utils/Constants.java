@@ -32,5 +32,28 @@ public class Constants
 
 	/** Constante - Header - Caras */
 	public static final String HEADER_PRINT_SIDES = "sides" ;
+	
+	/*********************************************************/
+	/******************* Response Server *********************/
+	/*********************************************************/
+	
+	/** Response server - Key - Status */
+	public static final String RESPONSE_SERVER_KEY_STATUS 	 = "status" ;
+
+	/** Response server - Key - Message*/
+	public static final String RESPONSE_SERVER_KEY_MESSAGE 	 = "message" ;
+
+	/** Response server - Key - Exception */
+	public static final String RESPONSE_SERVER_KEY_EXCEPTION = "exception" ;
+	
+	/*********************************************************/
+	/*********************** Estados *************************/
+	/*********************************************************/
+	
+	/** Constante - Estado - DONE */
+	public static final String STATE_DONE  = "Realizado" ;
+	
+	/** Constante - Estado - ERROR */
+	public static final String STATE_ERROR = "Error" ;
 }
 

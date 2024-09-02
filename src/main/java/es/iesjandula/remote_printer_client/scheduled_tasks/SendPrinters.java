@@ -1,12 +1,10 @@
 package es.iesjandula.remote_printer_client.scheduled_tasks;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Scanner;
 
 import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
@@ -15,6 +13,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -22,6 +21,8 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import es.iesjandula.remote_printer_client.dto.DtoPrinter;
+import es.iesjandula.remote_printer_client.utils.PrinterClientException;
+import es.iesjandula.remote_printer_client.utils.PrinterInfoService;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -33,6 +34,9 @@ public class SendPrinters
 	
 	@Value("${printer.banned}")
 	private String[] banned ;
+	
+	@Autowired
+	private PrinterInfoService printerInfoService ;
 
 	/**
 	 * Metodo encargado de enviar la informacion de las impresoras
@@ -58,7 +62,15 @@ public class SendPrinters
 				// Si la impresora no está baneada, la procesamos
 				if(!printersBanned.contains(printer.getName()))
 				{
-					this.obtenerInfoImpresora(listDtoPrinters, printer) ;
+					try
+					{
+						// Obtenemos información de la impresora y la añadimos la impresora a la lista con los datos leídos
+						listDtoPrinters.add(this.printerInfoService.obtenerInfoImpresora(printer)) ;
+					}
+					catch (PrinterClientException printerClientException)
+					{
+						// Ya logueado, lo malo que no se puede obtener información de esta impresora
+					}
 				}
 			}
 
@@ -81,61 +93,6 @@ public class SendPrinters
 				{
 					log.error("IOException en httpClient mientras se cerraba el flujo de datos", ioException) ;
 				}
-			}
-		}
-	}
-
-	/**
-	 * @param listDtoPrinters lista actual de impresoras DTO
-	 * @param printer nueva impresora a consultar
-	 */
-	private void obtenerInfoImpresora(List<DtoPrinter> listDtoPrinters, PrintService printer)
-	{
-		Process process 		= null ;
-		InputStream inputStream = null ;
-		Scanner scanner 		= null ; 
-		
-		try
-		{
-			// Lanzamos el proceso para que nos informe diciéndole que nos pase la información con tildes (primer comando)
-			process 	= Runtime.getRuntime().exec("cmd.exe /c chcp 65001 && ConsoleApp1.exe \"" + printer.getName() + "\"") ;
-			
-			// Obtenemos el flujo de entrada
-			inputStream = process.getInputStream() ;
-			
-			// Leemos con el scanner
-			scanner 	= new Scanner(inputStream, "UTF-8");
-
-			// Ignoramos la primera línea que es el mensaje de cambio de página de códigos
-			if (scanner.hasNextLine())
-			{
-			    scanner.nextLine() ; // Ignoramos la línea de "Página de códigos activa: 65001"
-			}
-
-			// Añadimos la impresora a la lista con los datos leídos
-			listDtoPrinters.add(new DtoPrinter(printer.getName(), Integer.valueOf(scanner.nextLine()), scanner.nextLine(), Integer.valueOf(scanner.nextLine())));
-		}
-		catch (IOException ioException)
-		{
-			log.error("IOException mientras se obtenía información de la impresora " + printer.getName(), ioException) ;
-		}
-		finally
-		{
-			if (inputStream != null)
-			{
-				try
-				{
-					inputStream.close() ;
-				}
-				catch (IOException ioException)
-				{
-					log.error("IOException en inputStream mientras se cerraba el flujo de datos", ioException) ;
-				}
-			}
-			
-			if (scanner != null)
-			{
-				scanner.close() ;
 			}
 		}
 	}

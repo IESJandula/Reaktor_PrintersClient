@@ -228,5 +228,42 @@ public class DtoPrintAction
 	{
 		this.contenidoFichero = contenidoFichero ;
 	}
+
+	@Override
+	public String toString()
+	{
+		StringBuilder builder = new StringBuilder() ;
+		
+		builder.append("DtoPrintAction [id=") ;
+		builder.append(this.id) ;
+		
+		builder.append(", user=") ;
+		builder.append(this.user) ;
+		
+		builder.append(", printer=") ;
+		builder.append(this.printer) ;
+		
+		builder.append(", status=") ;
+		builder.append(this.status) ;
+		
+		builder.append(", fileName=") ;
+		builder.append(this.fileName) ;
+		
+		builder.append(", copies=") ;
+		builder.append(this.copies) ;
+		
+		builder.append(", blackAndWhite=") ;
+		builder.append(this.blackAndWhite) ;
+		
+		builder.append(", vertical=") ;
+		builder.append(this.vertical) ;
+		
+		builder.append(", twoSides=") ;
+		builder.append(this.twoSides) ;
+		
+		builder.append("]") ;
+		
+		return builder.toString() ;
+	}
 }
 

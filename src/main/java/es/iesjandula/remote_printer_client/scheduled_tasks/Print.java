@@ -3,10 +3,10 @@ package es.iesjandula.remote_printer_client.scheduled_tasks;
 import java.awt.print.PageFormat;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
-import java.io.DataInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 
 import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
@@ -15,7 +15,6 @@ import javax.print.attribute.standard.Chromaticity;
 import javax.print.attribute.standard.Copies;
 import javax.print.attribute.standard.Sides;
 
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -27,13 +26,16 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.printing.PDFPageable;
 import org.apache.pdfbox.printing.PDFPrintable;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-
-import es.iesjandula.remote_printer_client.error.PrinterError;
+import es.iesjandula.remote_printer_client.dto.DtoPrintAction;
+import es.iesjandula.remote_printer_client.dto.DtoPrinter;
+import es.iesjandula.remote_printer_client.utils.Constants;
+import es.iesjandula.remote_printer_client.utils.PrinterClientException;
+import es.iesjandula.remote_printer_client.utils.PrinterInfoService;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -42,291 +44,583 @@ public class Print
 {
 	@Value("${printer.server.url}")
 	private String serverUrl ;
+	
+	@Autowired
+	private PrinterInfoService printerInfoService ;
 
 	/**
 	 * Funcion que cada X tiempo pregunta al servidor si hay que imprimir algo y si lo hay lo imprime
 	 */
 	@Scheduled(fixedDelayString = "${printer.print.fixedDelayString}")
-	public void print()
+	public void imprimir()
 	{
-		CloseableHttpClient httpClient = null;
-		CloseableHttpResponse response = null;
-		InputStream inputStream = null;
-		// GETTING HTTP CLIENT
-		httpClient = HttpClients.createDefault();
+		CloseableHttpClient httpClient = HttpClients.createDefault() ;
 
-		HttpGet request = new HttpGet(this.serverUrl + "/get/prints");
-		HttpPost postRequest = new HttpPost(this.serverUrl + "/get/print/status");
-		String id = "";
+		DtoPrintAction dtoPrintAction = null ;
 		try
 		{
-			//Hace la peticion
-			response = httpClient.execute(request);
-			if (response.containsHeader("Content-Disposition"))
+			// Buscamos la tarea para imprimir
+			dtoPrintAction = this.buscarTareaParaImprimir(httpClient) ;
+			
+			// Si hay ninguna acción que hacer ...
+			if (dtoPrintAction != null)
 			{
-				inputStream = response.getEntity().getContent();
+				// Logueamos
+				log.info("Se ha encontrado una tarea para imprimir: {}", dtoPrintAction) ;
 				
-				//Saca los parametros de la impresion
-				String numCopies = response.getFirstHeader("numCopies").getValue();
-				String printer = response.getFirstHeader("printer").getValue();
-				String color = response.getFirstHeader("color").getValue();
-				String vertical = response.getFirstHeader("orientation").getValue();
-				String faces = response.getFirstHeader("faces").getValue();
-				String user = response.getFirstHeader("user").getValue();
-				id = response.getFirstHeader("id").getValue();
-				postRequest.addHeader("id", id);
+				// Imprimimos
+				this.imprimirInternal(httpClient, dtoPrintAction) ;	
+			}
+		}
+		catch (PrinterClientException printerClientExceptionInternal)
+		{
+			// Logueada previamente en el método
+		}
+		
+		try
+		{
+			// Cerramos el CloseableHttpClient
+			httpClient.close() ;
+		}
+		catch (IOException ioException)
+		{
+			log.error("Error al cerrar CloseableHttpClient: " + ioException.getMessage(), ioException) ;
+		}
+	}
+
+	/**
+	 * @param httpClient HTTP Client
+	 * @param dtoPrintAction tarea para imprimir
+	 * @throws PrinterClientException con un error
+	 */
+	private void imprimirInternal(CloseableHttpClient httpClient, DtoPrintAction dtoPrintAction)
+	{
+		try
+		{
+			// ... imprimimos la tarea
+			this.imprimirDocumento(dtoPrintAction) ;
+			
+			// Enviamos la respuesta al servidor de que todo ha ido bien
+			this.enviarRespuestaAlServidor(httpClient, dtoPrintAction, null) ;
+			
+			// Logueamos
+			log.info("Se ha enviado respuesta al servidor de la tarea impresa correctamente: {}", dtoPrintAction) ;
+		}
+		catch (PrinterClientException printerClientException)
+		{
+			try
+			{
+				// Enviamos la respuesta al servidor de que ha habido un error
+				this.enviarRespuestaAlServidor(httpClient, dtoPrintAction, printerClientException) ;
+				
+				// Logueamos
+				log.info("Se ha enviado respuesta al servidor de la tarea NO impresa: {}", dtoPrintAction) ;
+			}
+			catch (PrinterClientException printerClientExceptionInternal)
+			{
+				// Logueada previamente en el método
+			}			
+		}
+	}
+	
+	/**
+	 * @param httpClient HTTP Client
+	 * @return tarea para imprimir
+	 * @throws PrinterClientException con un error
+	 */
+	private DtoPrintAction buscarTareaParaImprimir(CloseableHttpClient httpClient) throws PrinterClientException
+	{
+		DtoPrintAction outcome = null ;
+		CloseableHttpResponse closeableHttpResponse = null ;
+		InputStream contenidoFicheroOriginal = null ;
+		
+		try
+		{
+			HttpGet buscarTareaParaImprimirReq = new HttpGet(this.serverUrl + "/printers/client/print") ;
+			
+			// Hacemos la peticion
+			closeableHttpResponse = httpClient.execute(buscarTareaParaImprimirReq) ;
+			
+			// Comprobamos si viene la cabecera. En caso afirmativo, es porque trae un fichero a imprimir
+			if (closeableHttpResponse.containsHeader(Constants.HEADER_PRINT_CONTENT_DISPOSITION))
+			{
+				// Obtenemos los parametros de la impresion
+				String id 	          = closeableHttpResponse.getFirstHeader(Constants.HEADER_PRINT_ID).getValue() ;
+				String user    	      = closeableHttpResponse.getFirstHeader(Constants.HEADER_PRINT_USER).getValue() ;
+				String printer 	   	  = closeableHttpResponse.getFirstHeader(Constants.HEADER_PRINT_PRINTER).getValue() ;
+				Integer copies     	  = Integer.valueOf(closeableHttpResponse.getFirstHeader(Constants.HEADER_PRINT_COPIES).getValue()) ;
+				Boolean blackAndWhite = Boolean.valueOf(closeableHttpResponse.getFirstHeader(Constants.HEADER_PRINT_COLOR).getValue()) ;
+				Boolean vertical 	  = Boolean.valueOf(closeableHttpResponse.getFirstHeader(Constants.HEADER_PRINT_ORIENTATION).getValue()) ;
+				Boolean twoSides 	  = Boolean.valueOf(closeableHttpResponse.getFirstHeader(Constants.HEADER_PRINT_SIDES).getValue()) ;
+			
+				// Creamos una nueva instancia de DtoPrintAction
+				outcome = new DtoPrintAction() ;
+				
+				// Asignamos los valores
+				outcome.setId(id) ;
+				outcome.setUser(user) ;
+				outcome.setPrinter(printer) ;
+				outcome.setCopies(Integer.valueOf(copies)) ;
+				outcome.setBlackAndWhite(blackAndWhite) ;
+				outcome.setVertical(vertical) ;
+				outcome.setTwoSides(twoSides) ;
+				
+				// Obtenemos el contenido del documento a imprimir
+				contenidoFicheroOriginal = closeableHttpResponse.getEntity().getContent() ;
+				
+				// Copiamos el contenido del InputStream original en nuestro objeto outcome
+				this.copiarContenidoInputStreamOriginal(outcome, contenidoFicheroOriginal) ;				
+			}
+		}
+		catch (IOException ioException)
+		{
+			String errorString = "IOException mientras se buscaba la tarea para imprimir en el servidor" ;
+			
+			log.error(errorString, ioException) ;
+			throw new PrinterClientException(errorString, ioException) ;
+		}
+		finally
+		{
+			// Cierre de flujos
+			this.buscarTareaParaImprimirCierreFlujos(closeableHttpResponse) ;
+		}
+		
+		return outcome ;
+	}
+
+	/**
+	 * @param outcome outcome
+	 * @param contenidoFicheroOriginal contenido fichero original
+	 * @throws PrinterClientException con un error
+	 */
+	private void copiarContenidoInputStreamOriginal(DtoPrintAction outcome, InputStream contenidoFicheroOriginal) throws PrinterClientException
+	{
+		ByteArrayOutputStream buffer = new ByteArrayOutputStream() ;
+		
+		byte[] data = new byte[1024] ;
+		
+		try
+		{
+			// Leemos para ver si hemos llegado al final
+			int nRead = contenidoFicheroOriginal.read(data, 0, data.length) ;
+			
+			while (nRead != -1)
+			{
+				// Escribimos en el buffer
+			    buffer.write(data, 0, nRead) ;
+
+				// Leemos para ver si hemos llegado al final
+			    nRead = contenidoFicheroOriginal.read(data, 0, data.length) ;
+			}
+	
+			// Convertimos el contenido copiado a un ByteArrayInputStream (lo cerraremos al final)
+			ByteArrayInputStream contenidoFichero = new ByteArrayInputStream(buffer.toByteArray()) ;
+			
+			// Guardamos en el objeto outcome dentro del contenido del fichero
+			outcome.setContenidoFichero(contenidoFichero) ;
+		}
+		catch (IOException ioException)
+		{
+			String errorString = "IOException mientras se copiaba el inputStream 'contenidoFicheroOriginal' en nuestro objeto interno" ;
+			
+			log.error(errorString, ioException) ;
+			throw new PrinterClientException(errorString, ioException) ;			
+		}
+		finally
+		{
+			if (contenidoFicheroOriginal != null)
+			{
 				try
 				{
-					//Imprime
-					this.printFile(printer, Integer.valueOf(numCopies), Boolean.valueOf(color),
-							Boolean.valueOf(vertical), Boolean.valueOf(faces), user, inputStream);
-					postRequest.addHeader("status", "done");
-					httpClient.execute(postRequest);
-				} catch (PrinterError e)
+					// Cerramos el InputStream original ya que ya copiamos el contenido
+					contenidoFicheroOriginal.close() ;
+				}
+				catch (IOException ioException)
 				{
-					postRequest.addHeader("status", "error");
-					httpClient.execute(postRequest);
+					String errorString = "IOException mientras se cerraba el inputStream 'contenidoFicheroOriginal' en nuestro objeto interno" ;
+					
+					log.error(errorString, ioException) ;
+					throw new PrinterClientException(errorString, ioException) ;	
 				}
 			}
-		} catch (JsonProcessingException exception)
+		}
+	}
+
+	/**
+	 * @param closeableHttpResponse closeable HTTP response
+	 * @throws PrinterClientException printer client exception
+	 */
+	private void buscarTareaParaImprimirCierreFlujos(CloseableHttpResponse closeableHttpResponse) throws PrinterClientException
+	{
+		if (closeableHttpResponse != null)
 		{
-			String error = "Error Json Processing Exception";
-			log.error(error, exception);
-		} catch (UnsupportedEncodingException exception)
-		{
-			String error = "Error Unsupported Encoding Exception";
-			log.error(error, exception);
-		} catch (ClientProtocolException exception)
-		{
-			String error = "Error Client Protocol Exception";
-			log.error(error, exception);
-		} catch (IOException exception)
-		{
-			String error = "Error In Out Exception";
-			log.error(error, exception);
-		} finally
-		{
-			// --- CERRAMOS ---
-			this.closeHttpClientResponse(httpClient, response);
+			try
+			{
+				closeableHttpResponse.close() ;
+			}
+			catch (IOException ioException)
+			{
+				String errorString = "IOException mientras se cerraba el closeableHttpResponse en el método que busca la tarea para imprimir en el servidor" ;
+				
+				log.error(errorString, ioException) ;
+				throw new PrinterClientException(errorString, ioException) ;
+			}
 		}
 	}
 
 	/**
 	 *  Imprime un documento con la configuración pasada como parametros
-	 * @param printer
-	 * @param numCopies
-	 * @param color
-	 * @param vertical
-	 * @param faces
-	 * @param user
-	 * @param input
-	 * @throws PrinterError
+	 * @param dtoPrintAction tarea a imprimir
+	 * @throws PrinterClientException con un error
 	 */
-	public void printFile(String printer, int numCopies, boolean color, boolean vertical, boolean faces, String user,
-			InputStream input) throws PrinterError
+	public void imprimirDocumento(DtoPrintAction dtoPrintAction) throws PrinterClientException
 	{
-
-		//Flujos
-		DataInputStream dataInputStream = null;
-		PDDocument pdDocument = null;
-		PDDocument pdPageExtra = null;
-		PDPageContentStream contentStream = null;
+		// Flujos
+		PDDocument pdDocument  = null ;
+		PDDocument pdPageExtra = null ;
+		
 		try
 		{
-			dataInputStream = new DataInputStream(input);
-
-			//Elegir la impresora
-			PrintService selectedPrinter = this.selectPrinter(printer);
+			// Buscamos la impresora
+			PrintService selectedPrinter = this.buscarImpresora(dtoPrintAction) ;
 			
-			if (selectedPrinter != null)
-			{
-				PrinterJob printerJob = PrinterJob.getPrinterJob();
-				
-				//Introducir el contenido del documento
-				pdDocument = PDDocument.load(input);
-				//Creacion de pagina con el nombre del usuario
-				pdPageExtra = new PDDocument();
-				PDPage newPage = new PDPage();
-				pdPageExtra.addPage(newPage);
+			// Validamos el estado de la impresora
+			this.validarEstadoImpresora(selectedPrinter) ;
+			
+			// Creamos el JOB de impresión
+			PrinterJob printerJob = PrinterJob.getPrinterJob() ;
+			
+			// Seleccionamos la impresora
+			printerJob.setPrintService(selectedPrinter) ;
+			
+			// Introducimos el contenido del documento
+			pdDocument = PDDocument.load(dtoPrintAction.getContenidoFichero());
+			
+			// Creamos una página con el nombre del usuario
+			pdPageExtra = this.crearPaginaNombreUsuario(dtoPrintAction, pdDocument) ;
+			
+			// Configuramos la impresión de la página del usuario
+			HashPrintRequestAttributeSet attributeSetPaginaUsuario = this.configurarPaginaUsuario(dtoPrintAction, pdPageExtra, printerJob) ;
 
-				contentStream = new PDPageContentStream(pdDocument, newPage);
-				
-				//Introduccion del texto de la pagina del usuario
-				contentStream.setFont(PDType1Font.HELVETICA_BOLD, 50);
-				contentStream.beginText();
-				contentStream.newLineAtOffset(100, 700);
-				contentStream.showText(user);
-				contentStream.endText();
-				contentStream.close();
-
-				//Configuracion de la impresion
-				PDFPageable pageable = new PDFPageable(pdDocument);
-				PageFormat format = pageable.getPageFormat(0);
-				if (vertical)
-				{
-					format.setOrientation(PageFormat.PORTRAIT);
-				} else
-				{
-					format.setOrientation(PageFormat.LANDSCAPE);
-				}
-
-				printerJob.setPrintable(new PDFPrintable(pdDocument), format);
-				printerJob.setPrintService(selectedPrinter);
-				HashPrintRequestAttributeSet attributeSet = new HashPrintRequestAttributeSet();
-				if (color)
-				{
-					attributeSet.add(Chromaticity.COLOR);
-				} else
-				{
-					attributeSet.add(Chromaticity.MONOCHROME);
-				}
-				if (faces)
-				{
-					attributeSet.add(Sides.DUPLEX);
-				} else
-				{
-					attributeSet.add(Sides.ONE_SIDED);
-				}
-				attributeSet.add(new Copies(numCopies));
-				
-				//Impresion del documento
-				printerJob.print(attributeSet);
-				HashPrintRequestAttributeSet attributeSet2 = new HashPrintRequestAttributeSet();
-				attributeSet2.add(new Copies(1));
-				
-				//Impresion de la pagina del usuario
-				printerJob.setPrintable(new PDFPrintable(pdPageExtra));
-				printerJob.print(attributeSet2);
-
-			} else
-			{
-				String error = "Printer erronea";
-				log.error(error);
-				throw new PrinterError(error);
-			}
-
-		} catch (IOException exception)
+			// Configuramos la orientación
+			this.configurarOrientacion(dtoPrintAction, pdDocument, printerJob) ;
+			
+			// Configuramos color, caras y copias
+			HashPrintRequestAttributeSet attributeSetDocumentoPrincipal = this.configurarColorCarasYcopias(dtoPrintAction, printerJob) ;
+			
+			// Imprimimos el documento principal
+			printerJob.print(attributeSetDocumentoPrincipal) ;
+			
+			// Imprimimos la página del usuario
+			printerJob.print(attributeSetPaginaUsuario) ;
+		}
+		catch (PrinterException printerException)
 		{
-			String error = "Error leyendo el fichero";
-			log.error(error, exception);
-			throw new PrinterError(error, exception);
-
-		} catch (PrinterException exception)
+			String errorString = "PrinterException mientras se imprimía el documento" ;
+			
+			log.error(errorString, printerException) ;
+			throw new PrinterClientException(errorString, printerException) ;
+		}
+		catch (IOException ioException)
 		{
-			String error = "Error imprimiendo";
-			log.error(error, exception);
-			throw new PrinterError(error, exception);
-		} finally
+			String errorString = "IOException mientras se introducía el contenido del fichero a imprimir" ;
+			
+			log.error(errorString, ioException) ;
+			throw new PrinterClientException(errorString, ioException) ;
+		}
+		finally
 		{
-			this.closePrintInputs(dataInputStream, pdDocument, pdPageExtra, contentStream);
+			// Cerramos los flujos
+			this.imprimirCierreFlujos(pdDocument, pdPageExtra, dtoPrintAction.getContenidoFichero()) ;
 		}
 	}
 
 	/**
-	 * Metodo que selecciona la impresora
-	 * @param printer
-	 * @return
+	 * @param dtoPrintAction DTO Print Action
+	 * @return el servicio de impresora encontrada
+	 * @throws PrinterClientException con un error
 	 */
-	private PrintService selectPrinter(String printer)
+	private PrintService buscarImpresora(DtoPrintAction dtoPrintAction) throws PrinterClientException
 	{
-		PrintService[] printServices = PrintServiceLookup.lookupPrintServices(null, null);
-		PrintService selectedPrinter = null;
+		// Elegimos la impresora
+		PrintService selectedPrinter = this.buscarImpresoraInternal(dtoPrintAction.getPrinter()) ;
+		
+		// Si no está en la lista mandamos una excepción
+		if (selectedPrinter == null)
+		{
+			String errorString = "La impresora " + dtoPrintAction.getPrinter() + " no está en la lista" ;
+			
+			log.error(errorString) ;
+			throw new PrinterClientException(errorString) ;				
+		}
+		
+		return selectedPrinter ;
+	}
+	
+	/**
+	 * Metodo que selecciona la impresora
+	 * @param printer nombre de la impresora
+	 * @return el servicio de impresora
+	 */
+	private PrintService buscarImpresoraInternal(String printer)
+	{
+		PrintService[] printServices = PrintServiceLookup.lookupPrintServices(null, null) ;
+		PrintService selectedPrinter = null ;
+		
 		int i = 0;
 		while (i < printServices.length && selectedPrinter == null)
 		{
 			if (printServices[i].getName().equals(printer))
 			{
-				selectedPrinter = printServices[i];
+				selectedPrinter = printServices[i] ;
 			}
-			i++;
+			
+			i++ ;
 		}
-		return selectedPrinter;
+		
+		return selectedPrinter ;
+	}
+	
+	/**
+	 * @param selectedPrinter impresora seleccionada
+	 * @throws PrinterClientException con un error
+	 */
+	private void validarEstadoImpresora(PrintService selectedPrinter) throws PrinterClientException
+	{
+		// Obtenemos información de la impresora
+		DtoPrinter dtoPrinter = this.printerInfoService.obtenerInfoImpresora(selectedPrinter) ;
+		
+		// Validamos el estado de la impresora
+		if (dtoPrinter.getStatusId() != 0)
+		{
+			log.error("Error en " + selectedPrinter + ": " + dtoPrinter.getStatus()) ;
+			throw new PrinterClientException(dtoPrinter.getStatus()) ;				
+		}
+	}
+	
+	/**
+	 * @param dtoPrintAction DTO Print Action
+	 * @param pdPageExtra PD Page Extra
+	 * @param printerJob printer job
+	 * @return mapa con los atributos de la página del usuario configurados
+	 */
+	private HashPrintRequestAttributeSet configurarPaginaUsuario(DtoPrintAction dtoPrintAction, PDDocument pdPageExtra, PrinterJob printerJob)
+	{
+		// Configuramos
+		HashPrintRequestAttributeSet outcome = new HashPrintRequestAttributeSet() ;
+		outcome.add(new Copies(1)) ;
+		
+		// La hacemos printable
+		printerJob.setPrintable(new PDFPrintable(pdPageExtra)) ;
+		
+		return outcome ;
+	}
+
+	/**
+	 * @param dtoPrintAction DTO Print Action
+	 * @param pdDocument PD Document
+	 * @param printerJob printer job
+	 */
+	private void configurarOrientacion(DtoPrintAction dtoPrintAction, PDDocument pdDocument, PrinterJob printerJob)
+	{
+		PDFPageable pageable = new PDFPageable(pdDocument) ;
+		PageFormat format = pageable.getPageFormat(0) ;
+		
+		if (dtoPrintAction.getVertical())
+		{
+			format.setOrientation(PageFormat.PORTRAIT) ;
+		}
+		else
+		{
+			format.setOrientation(PageFormat.LANDSCAPE) ;
+		}
+
+		// La hacemos printable
+		printerJob.setPrintable(new PDFPrintable(pdDocument), format) ;
+	}
+	
+	/**
+	 * @param dtoPrintAction DTO Print Action
+	 * @param printerJob printer job
+	 * @return mapa con los atributos de la página a imprirmir configurados
+	 */
+	private HashPrintRequestAttributeSet configurarColorCarasYcopias(DtoPrintAction dtoPrintAction, PrinterJob printerJob)
+	{
+		HashPrintRequestAttributeSet outcome = new HashPrintRequestAttributeSet();
+		
+		// Configuramos color
+		if (dtoPrintAction.getBlackAndWhite())
+		{
+			outcome.add(Chromaticity.COLOR);
+		} 
+		else
+		{
+			outcome.add(Chromaticity.MONOCHROME);
+		}
+		
+		// Configuramos caras
+		if (dtoPrintAction.getTwoSides())
+		{
+			outcome.add(Sides.DUPLEX);
+		} 
+		else
+		{
+			outcome.add(Sides.ONE_SIDED);
+		}
+		
+		// Configuramos copias
+		outcome.add(new Copies(dtoPrintAction.getCopies())) ;
+		
+		return outcome ;
+	}
+	
+	/**
+	 * @param dtoPrintAction DTO Print Action
+	 * @param pdDocument PD Document
+	 * @return PD Page extra
+	 * @throws PrinterClientException con un error
+	 */
+	private PDDocument crearPaginaNombreUsuario(DtoPrintAction dtoPrintAction, PDDocument pdDocument) throws PrinterClientException
+	{
+		PDDocument outcome = new PDDocument() ;
+		
+		PDPage newPage = new PDPage() ;
+		outcome.addPage(newPage) ;
+
+		PDPageContentStream contentStream = null ; 
+		
+		try 
+		{
+			contentStream = new PDPageContentStream(pdDocument, newPage) ;
+			
+			//Introducimos el texto de la página del usuario
+			contentStream.setFont(PDType1Font.HELVETICA_BOLD, 50);
+			contentStream.beginText();
+			contentStream.newLineAtOffset(100, 700);
+			contentStream.showText(dtoPrintAction.getUser());
+			contentStream.endText();
+		}
+		catch (IOException ioException)
+		{
+			String errorString = "IOException mientras se creaba la página con el nombre de usuario" ;
+			
+			log.error(errorString, ioException) ;
+			throw new PrinterClientException(errorString, ioException) ;			
+		}
+		finally
+		{
+			if (contentStream != null)
+			{
+				try
+				{
+					contentStream.close() ;
+				}
+				catch (IOException ioException)
+				{
+					String errorString = "IOException mientras se cerraba PD Page Extra en la creación de la página con el nombre de usuario" ;
+					
+					log.error(errorString, ioException) ;
+					throw new PrinterClientException(errorString, ioException) ;
+				}
+			}
+		}
+		
+		return outcome ;
 	}
 
 	/**
 	 *  Metodo encargado de cerrar todos los flujos utilizados en el metodo print
-	 * @param dataInputStream
-	 * @param pdDocument
-	 * @param pdPageExtra
-	 * @param contentStream
+	 * @param pdDocument PD Document
+	 * @param pdPageExtra PD Page Extra
+	 * @param contenidoFichero contenido del fichero
+	 * @throws PrinterClientException con un error
 	 */
-	private void closePrintInputs(DataInputStream dataInputStream, PDDocument pdDocument,PDDocument pdPageExtra ,PDPageContentStream contentStream)
+	private void imprimirCierreFlujos(PDDocument pdDocument,PDDocument pdPageExtra, InputStream contenidoFichero) throws PrinterClientException
 	{
-		if (dataInputStream != null)
-		{
-			try
-			{
-				dataInputStream.close();
-			} catch (IOException exception)
-			{
-				String message = "Error";
-				log.error(message, exception);
-			}
-		}
 		if (pdDocument != null)
 		{
 			try
 			{
 				pdDocument.close();
-			} catch (IOException exception)
+			}
+			catch (IOException ioException)
 			{
-				String message = "Error";
-				log.error(message, exception);
+				String errorString = "IOException mientras se cerraba PD Document en el cierre de flujos de imprimir" ;
+				
+				log.error(errorString, ioException) ;
+				throw new PrinterClientException(errorString, ioException) ;
 			}
 		}
+
 		if (pdPageExtra != null)
 		{
 			try
 			{
-				pdPageExtra.close();
-			} catch (IOException exception)
+				pdPageExtra.close() ;
+			}
+			catch (IOException ioException)
 			{
-				String message = "Error";
-				log.error(message, exception);
+				String errorString = "IOException mientras se cerraba PD Page Extra en el cierre de flujos de imprimir" ;
+				
+				log.error(errorString, ioException) ;
+				throw new PrinterClientException(errorString, ioException) ;
 			}
 		}
-		if (contentStream != null)
+		
+		if (contenidoFichero != null)
 		{
 			try
 			{
-				contentStream.close();
-			} catch (IOException exception)
+				contenidoFichero.close() ;
+			}
+			catch (IOException ioException)
 			{
-				String message = "Error";
-				log.error(message, exception);
+				String errorString = "IOException mientras se cerraba el contenido del fichero en el cierre de flujos de imprimir" ;
+				
+				log.error(errorString, ioException) ;
+				throw new PrinterClientException(errorString, ioException) ;
 			}
 		}
 	}
-
+	
 	/**
-	 * Metodo encargado de cerrar todos los flujos utilizados la peticion
-	 * @param httpClient
-	 * @param response
+	 * @param httpClient HTTP Client
+	 * @param dtoPrintAction DTO Print Action
+	 * @param printerClientException printer client Exception
+	 * @throws PrinterClientException error al enviar la respuesta
 	 */
-	private void closeHttpClientResponse(CloseableHttpClient httpClient, CloseableHttpResponse response)
+	private void enviarRespuestaAlServidor(CloseableHttpClient httpClient,
+										   DtoPrintAction dtoPrintAction,
+										   PrinterClientException printerClientException) throws PrinterClientException
 	{
-		if (httpClient != null)
+		// Devolvemos el resultado al servidor
+		HttpPost postRequest = new HttpPost(this.serverUrl + "/printers/client/status") ;
+		
+		// Añadimos el id de la tarea para que la actualice
+		postRequest.addHeader(Constants.HEADER_PRINT_ID, dtoPrintAction.getId()) ;
+		
+		if (printerClientException == null)
 		{
-			try
-			{
-				httpClient.close();
-			} catch (IOException exception)
-			{
-				String error = "Error In Out Exception";
-				log.error(error, exception);
-			}
+			postRequest.addHeader(Constants.RESPONSE_SERVER_KEY_STATUS, Constants.STATE_DONE) ;
 		}
-		if (response != null)
+		else
 		{
-			try
-			{
-				response.close();
-			} catch (IOException exception)
-			{
-				String error = "Error In Out Exception";
-				log.error(error, exception);
-			}
+			postRequest.addHeader(Constants.RESPONSE_SERVER_KEY_STATUS, Constants.STATE_ERROR) ;
+			postRequest.addHeader(Constants.RESPONSE_SERVER_KEY_MESSAGE, printerClientException.getMessage()) ;
+			postRequest.addHeader(Constants.RESPONSE_SERVER_KEY_EXCEPTION, printerClientException.getException()) ;
+		}
+		
+		try
+		{
+			// Enviamos la respuesta al cliente en una request
+			httpClient.execute(postRequest) ;
+		}
+		catch (IOException ioException)
+		{
+			String errorString = "IOException mientras se enviaba la respuesta al servidor" ;
+			
+			log.error(errorString, ioException) ;
+			throw new PrinterClientException(errorString, ioException) ;
 		}
 	}
-
 }
