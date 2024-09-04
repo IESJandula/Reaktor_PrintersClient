@@ -1,5 +1,6 @@
 server:
   port: 8081
+
 printer:
   sendPrinters:
     fixedDelayString: "5000"
@@ -8,6 +9,7 @@ printer:
   banned: Microsoft XPS Document Writer, Fax, OneNote for Windows 10, Send To OneNote 2016, Microsoft Print to PDF, AnyDesk Printer, OneNote (Desktop)
   server:
     url: "https://api.iesjandula.es/"
+
 logging:
     level:
         root: INFO
