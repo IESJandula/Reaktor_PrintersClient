@@ -269,7 +269,7 @@ public class Print
 	}
 
 	/**
-	 *  Imprime un documento con la configuración pasada como parametros
+	 * Imprime un documento con la configuración pasada como parametros
 	 * @param dtoPrintAction tarea a imprimir
 	 * @throws PrinterClientException con un error
 	 */
@@ -299,20 +299,11 @@ public class Print
 			// Creamos una página con el nombre del usuario
 			pdPageExtra = this.crearPaginaNombreUsuario(dtoPrintAction, pdDocument) ;
 			
-			// Configuramos la impresión de la página del usuario
-			HashPrintRequestAttributeSet attributeSetPaginaUsuario = this.configurarPaginaUsuario(dtoPrintAction, pdPageExtra, printerJob) ;
-
-			// Configuramos la orientación
-			this.configurarOrientacion(dtoPrintAction, pdDocument, printerJob) ;
+			// Configurar e imprimir documento
+			this.configurarEimprimirDocumento(dtoPrintAction, pdDocument, printerJob) ;
 			
-			// Configuramos color, caras y copias
-			HashPrintRequestAttributeSet attributeSetDocumentoPrincipal = this.configurarColorCarasYcopias(dtoPrintAction, printerJob) ;
-			
-			// Imprimimos el documento principal
-			printerJob.print(attributeSetDocumentoPrincipal) ;
-			
-			// Imprimimos la página del usuario
-			printerJob.print(attributeSetPaginaUsuario) ;
+			// Configurar e imprimir página del usuario
+			this.configurarEimprimirPaginaUsuario(dtoPrintAction, pdPageExtra, printerJob) ;
 		}
 		catch (PrinterException printerException)
 		{
@@ -400,22 +391,76 @@ public class Print
 	
 	/**
 	 * @param dtoPrintAction DTO Print Action
-	 * @param pdPageExtra PD Page Extra
-	 * @param printerJob printer job
-	 * @return mapa con los atributos de la página del usuario configurados
+	 * @param pdDocument PD Document
+	 * @return PD Page extra
+	 * @throws PrinterClientException con un error
 	 */
-	private HashPrintRequestAttributeSet configurarPaginaUsuario(DtoPrintAction dtoPrintAction, PDDocument pdPageExtra, PrinterJob printerJob)
+	private PDDocument crearPaginaNombreUsuario(DtoPrintAction dtoPrintAction, PDDocument pdDocument) throws PrinterClientException
 	{
-		// Configuramos
-		HashPrintRequestAttributeSet outcome = new HashPrintRequestAttributeSet() ;
-		outcome.add(new Copies(1)) ;
+		PDDocument outcome = new PDDocument() ;
 		
-		// La hacemos printable
-		printerJob.setPrintable(new PDFPrintable(pdPageExtra)) ;
+		PDPage newPage = new PDPage() ;
+		outcome.addPage(newPage) ;
+
+		PDPageContentStream contentStream = null ; 
+		
+		try 
+		{
+			contentStream = new PDPageContentStream(pdDocument, newPage) ;
+			
+			//Introducimos el texto de la página del usuario
+			contentStream.setFont(PDType1Font.HELVETICA_BOLD, 50);
+			contentStream.beginText();
+			contentStream.newLineAtOffset(100, 700);
+			contentStream.showText(dtoPrintAction.getUser());
+			contentStream.endText();
+		}
+		catch (IOException ioException)
+		{
+			String errorString = "IOException mientras se creaba la página con el nombre de usuario" ;
+			
+			log.error(errorString, ioException) ;
+			throw new PrinterClientException(errorString, ioException) ;			
+		}
+		finally
+		{
+			if (contentStream != null)
+			{
+				try
+				{
+					contentStream.close() ;
+				}
+				catch (IOException ioException)
+				{
+					String errorString = "IOException mientras se cerraba PD Page Extra en la creación de la página con el nombre de usuario" ;
+					
+					log.error(errorString, ioException) ;
+					throw new PrinterClientException(errorString, ioException) ;
+				}
+			}
+		}
 		
 		return outcome ;
 	}
-
+	
+	/**
+	 * @param dtoPrintAction DTO Print Action
+	 * @param pdDocument PD Document
+	 * @param printerJob Printer JOB
+	 * @throws PrinterException con un error
+	 */
+	private void configurarEimprimirDocumento(DtoPrintAction dtoPrintAction, PDDocument pdDocument, PrinterJob printerJob) throws PrinterException
+	{
+		// Configuramos la orientación
+		this.configurarOrientacion(dtoPrintAction, pdDocument, printerJob) ;
+		
+		// Configuramos color, caras y copias
+		HashPrintRequestAttributeSet attributeSetDocumentoPrincipal = this.configurarColorCarasYcopias(dtoPrintAction, printerJob) ;
+		
+		// Imprimimos el documento principal
+		printerJob.print(attributeSetDocumentoPrincipal) ;
+	}
+	
 	/**
 	 * @param dtoPrintAction DTO Print Action
 	 * @param pdDocument PD Document
@@ -476,54 +521,33 @@ public class Print
 	
 	/**
 	 * @param dtoPrintAction DTO Print Action
-	 * @param pdDocument PD Document
-	 * @return PD Page extra
-	 * @throws PrinterClientException con un error
+	 * @param pdPageExtra PD Page Extra
+	 * @param printerJob Printer JOB
+	 * @throws PrinterException con un error
 	 */
-	private PDDocument crearPaginaNombreUsuario(DtoPrintAction dtoPrintAction, PDDocument pdDocument) throws PrinterClientException
+	private void configurarEimprimirPaginaUsuario(DtoPrintAction dtoPrintAction, PDDocument pdPageExtra, PrinterJob printerJob) throws PrinterException
 	{
-		PDDocument outcome = new PDDocument() ;
+		// Configuramos la impresión de la página del usuario
+		HashPrintRequestAttributeSet attributeSetPaginaUsuario = this.configurarPaginaUsuario(dtoPrintAction, pdPageExtra, printerJob) ;
 		
-		PDPage newPage = new PDPage() ;
-		outcome.addPage(newPage) ;
-
-		PDPageContentStream contentStream = null ; 
+		// Imprimimos la página del usuario
+		printerJob.print(attributeSetPaginaUsuario) ;
+	}
+	
+	/**
+	 * @param dtoPrintAction DTO Print Action
+	 * @param pdPageExtra PD Page Extra
+	 * @param printerJob printer job
+	 * @return mapa con los atributos de la página del usuario configurados
+	 */
+	private HashPrintRequestAttributeSet configurarPaginaUsuario(DtoPrintAction dtoPrintAction, PDDocument pdPageExtra, PrinterJob printerJob)
+	{
+		// Configuramos
+		HashPrintRequestAttributeSet outcome = new HashPrintRequestAttributeSet() ;
+		outcome.add(new Copies(1)) ;
 		
-		try 
-		{
-			contentStream = new PDPageContentStream(pdDocument, newPage) ;
-			
-			//Introducimos el texto de la página del usuario
-			contentStream.setFont(PDType1Font.HELVETICA_BOLD, 50);
-			contentStream.beginText();
-			contentStream.newLineAtOffset(100, 700);
-			contentStream.showText(dtoPrintAction.getUser());
-			contentStream.endText();
-		}
-		catch (IOException ioException)
-		{
-			String errorString = "IOException mientras se creaba la página con el nombre de usuario" ;
-			
-			log.error(errorString, ioException) ;
-			throw new PrinterClientException(errorString, ioException) ;			
-		}
-		finally
-		{
-			if (contentStream != null)
-			{
-				try
-				{
-					contentStream.close() ;
-				}
-				catch (IOException ioException)
-				{
-					String errorString = "IOException mientras se cerraba PD Page Extra en la creación de la página con el nombre de usuario" ;
-					
-					log.error(errorString, ioException) ;
-					throw new PrinterClientException(errorString, ioException) ;
-				}
-			}
-		}
+		// La hacemos printable
+		printerJob.setPrintable(new PDFPrintable(pdPageExtra)) ;
 		
 		return outcome ;
 	}
