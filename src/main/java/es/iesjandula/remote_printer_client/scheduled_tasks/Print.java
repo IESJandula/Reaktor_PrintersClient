@@ -7,6 +7,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
@@ -23,6 +25,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.printing.PDFPageable;
 import org.apache.pdfbox.printing.PDFPrintable;
@@ -397,23 +400,57 @@ public class Print
 	 */
 	private PDDocument crearPaginaNombreUsuario(DtoPrintAction dtoPrintAction, PDDocument pdDocument) throws PrinterClientException
 	{
-		PDDocument outcome = new PDDocument() ;
-		
-		PDPage newPage = new PDPage() ;
-		outcome.addPage(newPage) ;
+	    // Crea un nuevo documento PDF que será el resultado
+	    PDDocument outcome = new PDDocument() ;
+	    
+	    // Crea una nueva página para añadir al documento
+	    PDPage newPage = new PDPage() ;
+	    
+	    // Añade la nueva página al documento de resultado
+	    outcome.addPage(newPage) ;
 
 		PDPageContentStream contentStream = null ; 
 		
 		try 
 		{
-			contentStream = new PDPageContentStream(pdDocument, newPage) ;
-			
-			//Introducimos el texto de la página del usuario
-			contentStream.setFont(PDType1Font.HELVETICA_BOLD, 50);
-			contentStream.beginText();
-			contentStream.newLineAtOffset(100, 700);
-			contentStream.showText(dtoPrintAction.getUser());
-			contentStream.endText();
+			// Inicia un flujo de contenido para la nueva página creada
+	        contentStream = new PDPageContentStream(outcome, newPage) ;
+
+	        // Configura el estilo del texto con la fuente y el tamaño de fuente
+	        float fontSize = 50 ;
+	        contentStream.setFont(PDType1Font.HELVETICA_BOLD, fontSize) ;
+	        float leading = 1.5f * fontSize ; // Espacio entre líneas del texto
+
+	        // Obtiene el nombre del usuario a escribir en la página
+	        String userName = dtoPrintAction.getUser() ;
+	        
+	        float margin = 50 ; // Define el margen alrededor del texto
+	        float width = newPage.getMediaBox().getWidth() - 2 * margin ; // Calcula el ancho disponible para el texto
+	        float startX = margin ; // Posición inicial X del texto desde la izquierda
+
+	        // Divide el texto del usuario en múltiples líneas según el ancho disponible
+	        List<String> lineasDocumento = crearPaginaNombreUsuarioObtenerLineas(userName, width, fontSize, PDType1Font.HELVETICA_BOLD) ;
+
+	        // Calcula la posición inicial Y para centrar el texto verticalmente
+	        
+	        // Altura total del texto calculada
+	        float textHeight = lineasDocumento.size() * leading ;
+	        float startY = (newPage.getMediaBox().getHeight() + textHeight) / 2 ;
+
+	        // Inicia el flujo de contenido de texto
+	        contentStream.beginText() ;
+	        contentStream.setFont(PDType1Font.HELVETICA_BOLD, fontSize) ;
+	        contentStream.newLineAtOffset(startX, startY) ;
+
+	        // Itera sobre cada línea de texto y la escribe centrada en la página
+	        for (String lineaDocumento : lineasDocumento)
+	        {
+	        	// Escribe la línea en el documento
+	            this.crearPaginaNombreUsuarioEscribeLineaDocumento(newPage, contentStream, fontSize, leading, startX, lineaDocumento) ;
+	        }
+
+	        // Finaliza el flujo de contenido de texto
+	        contentStream.endText() ;
 		}
 		catch (IOException ioException)
 		{
@@ -441,6 +478,112 @@ public class Print
 		}
 		
 		return outcome ;
+	}
+
+	/**
+	 * 
+	 * @param newPage nueva página del documento del usuario
+	 * @param contentStream content stream
+	 * @param fontSize tamaño de fuente
+	 * @param leading espacio entre líneas del texto
+	 * @param startX punto de comienzo eje X de la línea
+	 * @param lineaDocumento línea del documento
+	 * @throws PrinterClientException con un error
+	 */
+	private void crearPaginaNombreUsuarioEscribeLineaDocumento(PDPage newPage, PDPageContentStream contentStream, float fontSize,
+															   float leading, float startX, String lineaDocumento) throws PrinterClientException
+	{
+		try
+		{
+			// Calcula el ancho de cada línea de texto
+			float textWidth = PDType1Font.HELVETICA_BOLD.getStringWidth(lineaDocumento) / 1000 * fontSize ;
+			
+			// Calcula el desplazamiento X para centrar la línea
+			float offsetX = (newPage.getMediaBox().getWidth() - textWidth) / 2 ;
+			
+			// Ajusta la posición horizontal
+			contentStream.newLineAtOffset(offsetX - startX, 0) ;
+			
+			// Escribe la línea en la página
+			contentStream.showText(lineaDocumento) ;
+			
+			// Mueve el cursor a la siguiente línea
+			contentStream.newLineAtOffset(startX - offsetX, -leading) ;
+		}
+		catch (IOException ioException)
+		{
+			String errorString = "IOException mientras se creaba la línea de la página con el nombre de usuario" ;
+			
+			log.error(errorString, ioException) ;
+			throw new PrinterClientException(errorString, ioException) ;			
+		}
+	}
+	
+	/** 
+	 * Método auxiliar para dividir el texto en líneas ajustadas al ancho disponible.
+	 * Este método divide el texto en varias líneas según el ancho máximo permitido,
+	 * utilizando la fuente y el tamaño de fuente especificados.
+	 * 
+	 * @param text El texto completo que se desea dividir en líneas.
+	 * @param width El ancho máximo disponible para cada línea de texto.
+	 * @param fontSize El tamaño de la fuente que se está utilizando para el texto.
+	 * @param font La fuente (`PDFont`) que se usará para calcular el ancho del texto.
+	 * @return Una lista de cadenas (`List<String>`) donde cada elemento representa una línea de texto ajustada.
+	 * @throws PrinterClientException Si ocurre un error relacionado con la impresión durante el procesamiento del texto.
+	 * @throws IOException Si ocurre un error de entrada/salida al calcular el ancho del texto.
+	 */
+	private List<String> crearPaginaNombreUsuarioObtenerLineas(String text, float width, float fontSize, PDFont font) throws PrinterClientException
+	{
+	    // Inicializamos una lista para almacenar las líneas de texto resultantes
+	    List<String> lines = new ArrayList<>() ;
+	    
+	    // Utilizamos StringBuilder para construir cada línea de texto de forma eficiente
+	    StringBuilder line = new StringBuilder() ;
+
+	    try
+	    {
+	    	// Iteramos sobre cada palabra en el texto separado por espacios
+	        for (String word : text.split(" "))
+	        {
+	            // Calculamos el ancho de la línea actual si agregamos la nueva palabra
+	            String testLine = line.length() == 0 ? word : line.toString() + " " + word ;
+	            float testLineWidth = font.getStringWidth(testLine) / 1000 * fontSize ;
+
+	            if (testLineWidth > width)
+	            {
+	                // Si la línea actual supera el ancho permitido, la agregamos a la lista
+	                lines.add(line.toString().trim()) ; // Agregar la línea sin espacios en blanco al principio o al final
+	                
+	                // Reiniciamos el StringBuilder para la siguiente línea con la palabra actual
+	                line = new StringBuilder(word) ;
+	            }
+	            else
+	            {
+	                // Si no supera el ancho, añadimos la palabra a la línea actual
+	                if (line.length() > 0)
+	                {
+	                    line.append(" ") ;
+	                }
+	                
+	                line.append(word) ;
+	            }
+	        }
+
+	        // Si hay texto en el StringBuilder al finalizar, lo añadimos como la última línea
+	        if (line.length() > 0) {
+	            lines.add(line.toString().trim()); // Agregar la última línea sin espacios en blanco al principio o al final
+	        }
+	    }
+	    catch (IOException ioException)
+	    {
+	        // Manejamos la excepción si ocurre un error de entrada/salida al calcular el ancho del texto
+	        String errorString = "IOException mientras se calculaba el ancho del texto para dividirlo en líneas";
+	        
+	        log.error(errorString, ioException);
+	        throw new PrinterClientException(errorString, ioException) ;
+	    }
+	    
+	    return lines ;
 	}
 	
 	/**
