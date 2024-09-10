@@ -1,4 +1,4 @@
-package es.iesjandula.remote_printer_client.scheduled_tasks;
+package es.iesjandula.reaktor_printers_client.scheduled_tasks;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -20,28 +20,36 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import es.iesjandula.remote_printer_client.dto.DtoPrinter;
-import es.iesjandula.remote_printer_client.utils.PrinterClientException;
-import es.iesjandula.remote_printer_client.utils.PrinterInfoService;
+import es.iesjandula.base.base_server.firebase.AuthorizationService;
+import es.iesjandula.base.base_server.utils.BaseServerException;
+import es.iesjandula.reaktor_printers_client.dto.DtoPrinter;
+import es.iesjandula.reaktor_printers_client.utils.PrinterClientException;
+import es.iesjandula.reaktor_printers_client.utils.PrinterInfoService;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * @author Francisco Manuel Benítez Chico
+ */
 @Slf4j
 @Component
 public class SendPrinters
 {
-	@Value("${printer.server.url}")
-	private String serverUrl ;
+	@Value("${reaktor.printers_server_url}")
+	private String printersServerUrl ;
 	
-	@Value("${printer.banned}")
-	private String[] banned ;
+	@Value("${reaktor.bannedPrinters}")
+	private String[] bannedPrinters ;
 	
 	@Autowired
 	private PrinterInfoService printerInfoService ;
+	
+	@Autowired
+	private AuthorizationService authorizationService ;
 
 	/**
 	 * Metodo encargado de enviar la informacion de las impresoras
 	 */
-	@Scheduled(fixedDelayString = "${printer.sendPrinters.fixedDelayString}")
+	@Scheduled(fixedDelayString = "${reaktor.fixedDelayString.sendPrinters}")
 	public void sendPrinters()
 	{
 		List<DtoPrinter> listDtoPrinters = new ArrayList<DtoPrinter>() ;
@@ -50,7 +58,7 @@ public class SendPrinters
 		PrintService[] printServices     = PrintServiceLookup.lookupPrintServices(null, null) ;
 		
 		// Introducimos aquí las banneadas
-		List<String> printersBanned      = Arrays.asList(this.banned) ;
+		List<String> bannedPrinters      = Arrays.asList(this.bannedPrinters) ;
 		
 		CloseableHttpClient httpClient   = HttpClients.createDefault() ;
 		
@@ -60,7 +68,7 @@ public class SendPrinters
 			for (PrintService printer : printServices)
 			{
 				// Si la impresora no está baneada, la procesamos
-				if(!printersBanned.contains(printer.getName()))
+				if (!bannedPrinters.contains(printer.getName()))
 				{
 					try
 					{
@@ -77,10 +85,6 @@ public class SendPrinters
 			// Enviamos la petición POST
 			this.enviarPeticionPost(httpClient, listDtoPrinters) ;
 		} 
-		catch (IOException ioException)
-		{
-			log.error("IOException mientras se trataba de enviar el estado de las impresoras", ioException) ;
-		}
 		finally
 		{
 			if (httpClient != null)
@@ -100,9 +104,8 @@ public class SendPrinters
 	/**
 	 * @param httpClient HTTP Client
 	 * @param listDtoPrinters lista de DTO printers
-	 * @throws IOException con un error mientras se enviaba la petición POST con el estado de las impresoras
 	 */
-	private void enviarPeticionPost(CloseableHttpClient httpClient, List<DtoPrinter> listDtoPrinters) throws IOException
+	private void enviarPeticionPost(CloseableHttpClient httpClient, List<DtoPrinter> listDtoPrinters)
 	{
 		try
 		{
@@ -113,19 +116,28 @@ public class SendPrinters
 			objectMapper.findAndRegisterModules(); 
 	
 			// Configuración del HTTP POST con codificación UTF-8
-			HttpPost requestPost = new HttpPost(this.serverUrl + "/printers/client/printers") ;
-			requestPost.setHeader("Content-type", "application/json") ;
+			HttpPost httpPost = new HttpPost(this.printersServerUrl + "/printers/client/printers") ;
+			
+			// Añadimos el token a la llamada
+			httpPost.addHeader("Authorization", "Bearer " + this.authorizationService.obtenerTokenPersonalizado()) ;
+			
+			// Indicamos que viaja un JSON
+			httpPost.setHeader("Content-type", "application/json") ;
 	
 			// Serialización de la entidad JSON asegurando UTF-8
 			StringEntity entity = new StringEntity(objectMapper.writeValueAsString(listDtoPrinters), StandardCharsets.UTF_8) ;
-			requestPost.setEntity(entity) ;
+			httpPost.setEntity(entity) ;
 	
 			// Enviamos la petición
-			httpClient.execute(requestPost) ;
+			httpClient.execute(httpPost) ;
 		}
 		catch (IOException ioException)
 		{
 			log.error("IOException mientras se enviaba la petición POST con el estado de las impresoras", ioException) ;
+		}
+		catch (BaseServerException baseServerException)
+		{
+			// Excepción logueada previamente
 		}
 	}
 }

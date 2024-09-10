@@ -1,4 +1,4 @@
-package es.iesjandula.remote_printer_client.scheduled_tasks;
+package es.iesjandula.reaktor_printers_client.scheduled_tasks;
 
 import java.awt.print.PageFormat;
 import java.awt.print.PrinterException;
@@ -34,19 +34,27 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import es.iesjandula.remote_printer_client.dto.DtoPrintAction;
-import es.iesjandula.remote_printer_client.dto.DtoPrinter;
-import es.iesjandula.remote_printer_client.utils.Constants;
-import es.iesjandula.remote_printer_client.utils.PrinterClientException;
-import es.iesjandula.remote_printer_client.utils.PrinterInfoService;
+import es.iesjandula.base.base_server.firebase.AuthorizationService;
+import es.iesjandula.base.base_server.utils.BaseServerException;
+import es.iesjandula.reaktor_printers_client.dto.DtoPrintAction;
+import es.iesjandula.reaktor_printers_client.dto.DtoPrinter;
+import es.iesjandula.reaktor_printers_client.utils.Constants;
+import es.iesjandula.reaktor_printers_client.utils.PrinterClientException;
+import es.iesjandula.reaktor_printers_client.utils.PrinterInfoService;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * @author Francisco Manuel Benítez Chico
+ */
 @Slf4j
 @Component
 public class Print
 {
-	@Value("${printer.server.url}")
-	private String serverUrl ;
+	@Value("${reaktor.printers_server_url}")
+	private String printersServerUrl ;
+	
+	@Autowired
+	private AuthorizationService authorizationService ;
 	
 	@Autowired
 	private PrinterInfoService printerInfoService ;
@@ -54,7 +62,7 @@ public class Print
 	/**
 	 * Funcion que cada X tiempo pregunta al servidor si hay que imprimir algo y si lo hay lo imprime
 	 */
-	@Scheduled(fixedDelayString = "${printer.print.fixedDelayString}")
+	@Scheduled(fixedDelayString = "${reaktor.fixedDelayString.print}")
 	public void imprimir()
 	{
 		CloseableHttpClient httpClient = HttpClients.createDefault() ;
@@ -75,7 +83,7 @@ public class Print
 				this.imprimirInternal(httpClient, dtoPrintAction) ;	
 			}
 		}
-		catch (PrinterClientException printerClientExceptionInternal)
+		catch (PrinterClientException | BaseServerException reaktorException)
 		{
 			// Logueada previamente en el método
 		}
@@ -119,10 +127,15 @@ public class Print
 				// Logueamos
 				log.info("Se ha enviado respuesta al servidor de la tarea NO impresa: {}", dtoPrintAction) ;
 			}
-			catch (PrinterClientException printerClientExceptionInternal)
+			catch (PrinterClientException | BaseServerException reaktorException)
 			{
 				// Logueada previamente en el método
 			}			
+		}
+		catch (BaseServerException e)
+		{
+			// Logueada previamente en el método
+			// No podemos hacer más ya que es un problema con el JWT
 		}
 	}
 	
@@ -130,8 +143,9 @@ public class Print
 	 * @param httpClient HTTP Client
 	 * @return tarea para imprimir
 	 * @throws PrinterClientException con un error
+	 * @throws BaseServerException con un error al obtener el token JWT
 	 */
-	private DtoPrintAction buscarTareaParaImprimir(CloseableHttpClient httpClient) throws PrinterClientException
+	private DtoPrintAction buscarTareaParaImprimir(CloseableHttpClient httpClient) throws PrinterClientException, BaseServerException
 	{
 		DtoPrintAction outcome = null ;
 		CloseableHttpResponse closeableHttpResponse = null ;
@@ -139,10 +153,13 @@ public class Print
 		
 		try
 		{
-			HttpGet buscarTareaParaImprimirReq = new HttpGet(this.serverUrl + "/printers/client/print") ;
+			HttpGet httpGet = new HttpGet(this.printersServerUrl + "/printers/client/print") ;
+			
+			// Añadimos el token a la llamada
+			httpGet.addHeader("Authorization", "Bearer " + this.authorizationService.obtenerTokenPersonalizado()) ;
 			
 			// Hacemos la peticion
-			closeableHttpResponse = httpClient.execute(buscarTareaParaImprimirReq) ;
+			closeableHttpResponse = httpClient.execute(httpGet) ;
 			
 			// Comprobamos si viene la cabecera. En caso afirmativo, es porque trae un fichero a imprimir
 			if (closeableHttpResponse.containsHeader(Constants.HEADER_PRINT_CONTENT_DISPOSITION))
@@ -755,16 +772,20 @@ public class Print
 	 * @param dtoPrintAction DTO Print Action
 	 * @param printerClientException printer client Exception
 	 * @throws PrinterClientException error al enviar la respuesta
+	 * @throws BaseServerException con un error al obtener el token JWT
 	 */
 	private void enviarRespuestaAlServidor(CloseableHttpClient httpClient,
 										   DtoPrintAction dtoPrintAction,
-										   PrinterClientException printerClientException) throws PrinterClientException
+										   PrinterClientException printerClientException) throws PrinterClientException, BaseServerException
 	{
 		// Devolvemos el resultado al servidor
-		HttpPost postRequest = new HttpPost(this.serverUrl + "/printers/client/status") ;
+		HttpPost postRequest = new HttpPost(this.printersServerUrl + "/printers/client/status") ;
 		
 		// Añadimos el id de la tarea para que la actualice
 		postRequest.addHeader(Constants.HEADER_PRINT_ID, dtoPrintAction.getId()) ;
+		
+		// Añadimos el token a la llamada
+		postRequest.addHeader("Authorization", "Bearer " + this.authorizationService.obtenerTokenPersonalizado()) ;
 		
 		if (printerClientException == null)
 		{

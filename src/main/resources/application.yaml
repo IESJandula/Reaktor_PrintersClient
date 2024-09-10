@@ -1,13 +1,14 @@
 server:
   port: 8081
-printer:
-  sendPrinters:
-    fixedDelayString: "5000"
-  print:
-    fixedDelayString: "5000"
-  banned: Microsoft XPS Document Writer, Fax, OneNote for Windows 10, Send To OneNote 2016, Microsoft Print to PDF, AnyDesk Printer, OneNote (Desktop)
-  server:
-    url: "http://localhost:8082/"
 logging:
     level:
         root: INFO
+reaktor:
+  publicKeyFile: C:\claves\public_key.pem
+  fixedDelayString:
+    sendPrinters: "5000"
+    print: "5000"
+  bannedPrinters: Microsoft XPS Document Writer, Fax, OneNote for Windows 10, Send To OneNote 2016, Microsoft Print to PDF, AnyDesk Printer, OneNote (Desktop)
+  printers_server_url: "http://localhost:8082/"
+  firebase_server_url: "http://localhost:8083/"
+  uidFile: C:\claves\uid_file.txt

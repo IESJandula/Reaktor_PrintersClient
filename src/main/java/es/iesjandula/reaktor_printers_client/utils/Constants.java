@@ -1,4 +1,4 @@
-package es.iesjandula.remote_printer_client.utils;
+package es.iesjandula.reaktor_printers_client.utils;
 
 /**
  * @author Francisco Manuel Benítez Chico

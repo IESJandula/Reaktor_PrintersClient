@@ -1,4 +1,4 @@
-package es.iesjandula.remote_printer_client.utils;
+package es.iesjandula.reaktor_printers_client.utils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,7 +8,7 @@ import javax.print.PrintService;
 
 import org.springframework.stereotype.Service;
 
-import es.iesjandula.remote_printer_client.dto.DtoPrinter;
+import es.iesjandula.reaktor_printers_client.dto.DtoPrinter;
 import lombok.extern.slf4j.Slf4j;
 
 /**

@@ -1,4 +1,4 @@
-package es.iesjandula.remote_printer_client.dto;
+package es.iesjandula.reaktor_printers_client.dto;
 
 import java.io.InputStream;
 

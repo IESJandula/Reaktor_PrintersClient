@@ -1,10 +1,12 @@
-package es.iesjandula.remote_printer_client.dto;
+package es.iesjandula.reaktor_printers_client.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-
+/**
+ * @author Francisco Manuel Benítez Chico
+ */
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
