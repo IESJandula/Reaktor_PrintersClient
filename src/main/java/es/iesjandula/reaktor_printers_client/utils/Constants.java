@@ -55,5 +55,16 @@ public class Constants
 	
 	/** Constante - Estado - ERROR */
 	public static final String STATE_ERROR = "Error" ;
+	
+	
+	/*********************************************************/
+	/****************** Ficheros y carpetas ******************/
+	/*********************************************************/
+	
+	/** Nombre de la carpeta de configuracion */
+	public static final String PRINTERS_CLIENT_CONFIG 	   = "printers_client_config" ;
+	
+	/** Nombre de la carpeta de configuracion al ejecutarse */
+	public static final String PRINTERS_CLIENT_CONFIG_EXEC = "printers_client_config_exec" ;
 }
 

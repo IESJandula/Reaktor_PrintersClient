@@ -1,5 +1,6 @@
 package es.iesjandula.reaktor_printers_client.utils;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Scanner;
@@ -34,8 +35,9 @@ public class PrinterInfoService
 		try
 		{
 			// Lanzamos el proceso para que nos informe diciéndole que nos pase la información con tildes (primer comando)
-			process 	= Runtime.getRuntime().exec("cmd.exe /c chcp 65001 && ConsoleApp1.exe \"" + printer.getName() + "\"") ;
-			
+			process 	= Runtime.getRuntime().exec("cmd.exe /c chcp 65001 && " + 
+																Constants.PRINTERS_CLIENT_CONFIG_EXEC + File.separator + 
+																		"ConsoleApp1.exe \"" + printer.getName() + "\"") ;
 			// Obtenemos el flujo de entrada
 			inputStream = process.getInputStream() ;
 			
