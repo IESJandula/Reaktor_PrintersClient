@@ -3,6 +3,11 @@ server:
 logging:
     level:
         root: INFO
+    file:
+        name: C:\logs\reaktor_reaktor_printersclient.log
+        max-size: 1MB
+        max-history: 10
+        total-size-cap: 10MB
 reaktor:
   publicKeyFile: ${PUBLIC_KEY_FILE}
   fixedDelayString:
