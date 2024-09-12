@@ -1,5 +1,7 @@
 package es.iesjandula.reaktor_printers_client.dto;
 
+import java.util.Date;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,13 +14,18 @@ import lombok.NoArgsConstructor;
 @Data
 public class DtoPrinter
 {
+	/** Atributo - Name */
+	private String name ;
 	
-	private String name;
+	/** Atributo - Status ID */
+	private int statusId ;
 	
-	private int statusId;
+	/** Atributo - Status */
+	private String status ;
 	
-	private String status;
+	/** Atributo - Printing queue */
+	private int printingQueue ;
 	
-	private int printingQueue;
-	
+	/** Atributo - Last update */
+	private Date lastUpdate ;
 }

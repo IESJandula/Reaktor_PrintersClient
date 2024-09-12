@@ -3,6 +3,7 @@ package es.iesjandula.reaktor_printers_client.utils;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Date;
 import java.util.Scanner;
 
 import javax.print.PrintService;
@@ -51,7 +52,11 @@ public class PrinterInfoService
 			}
 			
 			// Creamos una instancia de la impresora
-			outcome = new DtoPrinter(printer.getName(), Integer.valueOf(scanner.nextLine()), scanner.nextLine(), Integer.valueOf(scanner.nextLine())) ;
+			outcome = new DtoPrinter(printer.getName(),
+									 Integer.valueOf(scanner.nextLine()),
+									 scanner.nextLine(),
+									 Integer.valueOf(scanner.nextLine()),
+									 new Date()) ;
 		}
 		catch (IOException ioException)
 		{
