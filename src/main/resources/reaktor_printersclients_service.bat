@@ -5,7 +5,7 @@ set SERVICE_NAME=Reaktor_PrintersClient
 
 %JAVA_HOME%\bin\javaw -jar %JAR_PATH%
 
-REM Eliminar el servicio: sc delete ReaktorPrintersClients
-REM Creación del servicio: sc create ReaktorPrintersClients binPath= "C:\Users\usuario\Desktop\reaktor_printersclients_service.bat"
-REM Arranque automático: sc config ReaktorPrintersClients start= auto
-REM Primer arranque: sc start ReaktorPrintersClients
+REM Eliminar el servicio: sc delete ReaktorPrintersClient
+REM Creación del servicio: sc create ReaktorPrintersClient binPath= "C:\Users\usuario\Desktop\reaktor_printersclient_service.bat"
+REM Arranque automático: sc config ReaktorPrintersClient start= auto
+REM Primer arranque: sc start ReaktorPrintersClient
