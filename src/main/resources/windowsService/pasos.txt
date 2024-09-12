@@ -1,0 +1,5 @@
+nssm install ReaktorPrintersClient
+
+Application Path: C:\Program Files\Java\jdk-17.0.2\bin\javaw.exe
+Startup Directory: C:\Users\usuario\git\Reaktor_PrintersClient\target
+Arguments: -jar C:\Users\usuario\git\Reaktor_PrintersClient\target\ReaktorPrintersClient-1.0.0.jar
