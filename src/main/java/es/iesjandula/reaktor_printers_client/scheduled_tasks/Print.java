@@ -293,7 +293,7 @@ public class Print
 	 * @param dtoPrintAction tarea a imprimir
 	 * @throws PrinterClientException con un error
 	 */
-	public void imprimirDocumento(DtoPrintAction dtoPrintAction) throws PrinterClientException
+	private void imprimirDocumento(DtoPrintAction dtoPrintAction) throws PrinterClientException
 	{
 		// Flujos
 		PDDocument pdDocument  = null ;
