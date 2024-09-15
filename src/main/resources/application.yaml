@@ -11,7 +11,7 @@ logging:
 reaktor:
   publicKeyFile: C:\claves\public_key.pem
   fixedDelayString:
-    sendPrinters: "5000"
+    sendPrinters: "60000"
     print: "5000"
   bannedPrinters: Microsoft XPS Document Writer, Fax, OneNote for Windows 10, Send To OneNote 2016, Microsoft Print to PDF, AnyDesk Printer, OneNote (Desktop)
   printers_server_url: "http://localhost:8082/"
