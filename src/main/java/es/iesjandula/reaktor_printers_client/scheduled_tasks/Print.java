@@ -7,8 +7,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
@@ -29,6 +27,7 @@ import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.printing.PDFPageable;
 import org.apache.pdfbox.printing.PDFPrintable;
+import org.apache.pdfbox.util.Matrix;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -295,55 +294,124 @@ public class Print
 	 */
 	private void imprimirDocumento(DtoPrintAction dtoPrintAction) throws PrinterClientException
 	{
-		// Flujos
-		PDDocument pdDocument  = null ;
-		PDDocument pdPageExtra = null ;
-		
-		try
-		{
-			// Buscamos la impresora
-			PrintService selectedPrinter = this.buscarImpresora(dtoPrintAction) ;
-			
-			// Validamos el estado de la impresora
-			this.validarEstadoImpresora(selectedPrinter) ;
-			
-			// Creamos el JOB de impresión
-			PrinterJob printerJob = PrinterJob.getPrinterJob() ;
-			
-			// Seleccionamos la impresora
-			printerJob.setPrintService(selectedPrinter) ;
-			
-			// Introducimos el contenido del documento
-			pdDocument = PDDocument.load(dtoPrintAction.getContenidoFichero());
-			
-			// Creamos una página con el nombre del usuario
-			pdPageExtra = this.crearPaginaNombreUsuario(dtoPrintAction, pdDocument) ;
-			
-			// Configurar e imprimir documento
-			this.configurarEimprimirDocumento(dtoPrintAction, pdDocument, printerJob) ;
-			
-			// Configurar e imprimir página del usuario
-			this.configurarEimprimirPaginaUsuario(dtoPrintAction, pdPageExtra, printerJob) ;
-		}
-		catch (PrinterException printerException)
-		{
-			String errorString = "PrinterException mientras se imprimía el documento" ;
-			
-			log.error(errorString, printerException) ;
-			throw new PrinterClientException(errorString, printerException) ;
-		}
-		catch (IOException ioException)
-		{
-			String errorString = "IOException mientras se introducía el contenido del fichero a imprimir" ;
+	    // Flujos
+	    PDDocument pdDocument = null;
+
+	    try
+	    {
+	        // Buscamos la impresora
+	        PrintService selectedPrinter = this.buscarImpresora(dtoPrintAction);
+
+	        // Validamos el estado de la impresora
+	        this.validarEstadoImpresora(selectedPrinter);
+
+	        // Creamos el JOB de impresión
+	        PrinterJob printerJob = PrinterJob.getPrinterJob();
+
+	        // Seleccionamos la impresora
+	        printerJob.setPrintService(selectedPrinter);
+
+	        // Introducimos el contenido del documento
+	        pdDocument = PDDocument.load(dtoPrintAction.getContenidoFichero());
+
+	        // Añadir el nombre del usuario al PDF en la primera página
+	        this.agregarInfoProfesorEnPrimeraPagina(pdDocument, dtoPrintAction.getUser());
+
+	        // Configurar e imprimir documento
+	        this.configurarEimprimirDocumento(dtoPrintAction, pdDocument, printerJob);
+	    }
+	    catch (PrinterException printerException)
+	    {
+	        String errorString = "PrinterException mientras se imprimía el documento";
+	        log.error(errorString, printerException);
+	        throw new PrinterClientException(errorString, printerException);
+	    }
+	    catch (IOException ioException)
+	    {
+	        String errorString = "IOException mientras se introducía el contenido del fichero a imprimir";
+	        log.error(errorString, ioException);
+	        throw new PrinterClientException(errorString, ioException);
+	    }
+	    finally
+	    {
+	        // Cerramos los flujos
+	        this.imprimirCierreFlujos(pdDocument, dtoPrintAction.getContenidoFichero());
+	    }
+	}
+
+	/**
+	 * @param pdDocument PD Document
+	 * @param userName nombre y apellidos del usuario
+	 * @throws PrinterClientException con un error
+	 */
+	private void agregarInfoProfesorEnPrimeraPagina(PDDocument pdDocument, String userName) throws PrinterClientException
+	{
+	    // Obtenemos la primera página
+	    PDPage firstPage = pdDocument.getPage(0) ;
+	    
+	    PDPageContentStream contentStream = null ;
+
+	    try
+	    {
+	    	// Creamos un flujo de contenido para la primera página
+	    	contentStream = new PDPageContentStream(pdDocument, firstPage, PDPageContentStream.AppendMode.APPEND, true, true) ;
+	    	
+	        // Configuramos el texto para que se escriba verticalmente
+	        PDFont font = PDType1Font.HELVETICA_BOLD;
+	        float fontSize = 12;
+	        contentStream.setFont(font, fontSize);
+
+	        // Obtenemos dimensiones de la página
+	        float pageHeight = firstPage.getMediaBox().getHeight();
+
+	        // Calculamos la altura total del texto
+	        float textHeight = fontSize * userName.length();
+
+	        // Calculamos la posición de inicio centrada verticalmente
+	        float startX = 20; // Margen izquierdo
+	        float startY = (pageHeight + textHeight) / 2; // Centro vertical
+
+	        // Escribimos cada letra verticalmente
+	        contentStream.beginText();
+
+	        // Configuramos la posición inicial usando Matrix
+	        contentStream.setTextMatrix(Matrix.getTranslateInstance(startX, startY));
+	        
+	        // Escribimos cada letra una debajo de la otra
+	        for (char c : userName.toCharArray())
+	        {
+	            contentStream.showText(String.valueOf(c));
+	            contentStream.newLineAtOffset(0, -fontSize); // Movemos hacia abajo para la siguiente letra
+	        }
+	        
+	        contentStream.endText();
+	        
+	        
+	    }
+	    catch (IOException ioException)
+	    {
+			String errorString = "IOException mientras se añadía información del usuario a la primera página de su pdf" ;
 			
 			log.error(errorString, ioException) ;
 			throw new PrinterClientException(errorString, ioException) ;
 		}
-		finally
-		{
-			// Cerramos los flujos
-			this.imprimirCierreFlujos(pdDocument, pdPageExtra, dtoPrintAction.getContenidoFichero()) ;
-		}
+	    finally
+	    {
+	    	if (contentStream != null)
+	    	{
+	    		try
+	    		{
+					contentStream.close() ;
+				}
+	    		catch (IOException ioException)
+	    		{
+	    			String errorString = "IOException mientras se cerraba el flujo que añadía información del usuario a la primera página de su pdf" ;
+	    			
+	    			log.error(errorString, ioException) ;
+	    			throw new PrinterClientException(errorString, ioException) ;
+				}
+	    	}
+	    }
 	}
 
 	/**
@@ -407,200 +475,6 @@ public class Print
 			log.error("Error en " + selectedPrinter + ": " + dtoPrinter.getStatus()) ;
 			throw new PrinterClientException(dtoPrinter.getStatus()) ;				
 		}
-	}
-	
-	/**
-	 * @param dtoPrintAction DTO Print Action
-	 * @param pdDocument PD Document
-	 * @return PD Page extra
-	 * @throws PrinterClientException con un error
-	 */
-	private PDDocument crearPaginaNombreUsuario(DtoPrintAction dtoPrintAction, PDDocument pdDocument) throws PrinterClientException
-	{
-	    // Crea un nuevo documento PDF que será el resultado
-	    PDDocument outcome = new PDDocument() ;
-	    
-	    // Crea una nueva página para añadir al documento
-	    PDPage newPage = new PDPage() ;
-	    
-	    // Añade la nueva página al documento de resultado
-	    outcome.addPage(newPage) ;
-
-		PDPageContentStream contentStream = null ; 
-		
-		try 
-		{
-			// Inicia un flujo de contenido para la nueva página creada
-	        contentStream = new PDPageContentStream(outcome, newPage) ;
-
-	        // Configura el estilo del texto con la fuente y el tamaño de fuente
-	        float fontSize = 50 ;
-	        contentStream.setFont(PDType1Font.HELVETICA_BOLD, fontSize) ;
-	        float leading = 1.5f * fontSize ; // Espacio entre líneas del texto
-
-	        // Obtiene el nombre del usuario a escribir en la página
-	        String userName = dtoPrintAction.getUser() ;
-	        
-	        float margin = 50 ; // Define el margen alrededor del texto
-	        float width = newPage.getMediaBox().getWidth() - 2 * margin ; // Calcula el ancho disponible para el texto
-	        float startX = margin ; // Posición inicial X del texto desde la izquierda
-
-	        // Divide el texto del usuario en múltiples líneas según el ancho disponible
-	        List<String> lineasDocumento = crearPaginaNombreUsuarioObtenerLineas(userName, width, fontSize, PDType1Font.HELVETICA_BOLD) ;
-
-	        // Calcula la posición inicial Y para centrar el texto verticalmente
-	        
-	        // Altura total del texto calculada
-	        float textHeight = lineasDocumento.size() * leading ;
-	        float startY = (newPage.getMediaBox().getHeight() + textHeight) / 2 ;
-
-	        // Inicia el flujo de contenido de texto
-	        contentStream.beginText() ;
-	        contentStream.setFont(PDType1Font.HELVETICA_BOLD, fontSize) ;
-	        contentStream.newLineAtOffset(startX, startY) ;
-
-	        // Itera sobre cada línea de texto y la escribe centrada en la página
-	        for (String lineaDocumento : lineasDocumento)
-	        {
-	        	// Escribe la línea en el documento
-	            this.crearPaginaNombreUsuarioEscribeLineaDocumento(newPage, contentStream, fontSize, leading, startX, lineaDocumento) ;
-	        }
-
-	        // Finaliza el flujo de contenido de texto
-	        contentStream.endText() ;
-		}
-		catch (IOException ioException)
-		{
-			String errorString = "IOException mientras se creaba la página con el nombre de usuario" ;
-			
-			log.error(errorString, ioException) ;
-			throw new PrinterClientException(errorString, ioException) ;			
-		}
-		finally
-		{
-			if (contentStream != null)
-			{
-				try
-				{
-					contentStream.close() ;
-				}
-				catch (IOException ioException)
-				{
-					String errorString = "IOException mientras se cerraba PD Page Extra en la creación de la página con el nombre de usuario" ;
-					
-					log.error(errorString, ioException) ;
-					throw new PrinterClientException(errorString, ioException) ;
-				}
-			}
-		}
-		
-		return outcome ;
-	}
-
-	/**
-	 * 
-	 * @param newPage nueva página del documento del usuario
-	 * @param contentStream content stream
-	 * @param fontSize tamaño de fuente
-	 * @param leading espacio entre líneas del texto
-	 * @param startX punto de comienzo eje X de la línea
-	 * @param lineaDocumento línea del documento
-	 * @throws PrinterClientException con un error
-	 */
-	private void crearPaginaNombreUsuarioEscribeLineaDocumento(PDPage newPage, PDPageContentStream contentStream, float fontSize,
-															   float leading, float startX, String lineaDocumento) throws PrinterClientException
-	{
-		try
-		{
-			// Calcula el ancho de cada línea de texto
-			float textWidth = PDType1Font.HELVETICA_BOLD.getStringWidth(lineaDocumento) / 1000 * fontSize ;
-			
-			// Calcula el desplazamiento X para centrar la línea
-			float offsetX = (newPage.getMediaBox().getWidth() - textWidth) / 2 ;
-			
-			// Ajusta la posición horizontal
-			contentStream.newLineAtOffset(offsetX - startX, 0) ;
-			
-			// Escribe la línea en la página
-			contentStream.showText(lineaDocumento) ;
-			
-			// Mueve el cursor a la siguiente línea
-			contentStream.newLineAtOffset(startX - offsetX, -leading) ;
-		}
-		catch (IOException ioException)
-		{
-			String errorString = "IOException mientras se creaba la línea de la página con el nombre de usuario" ;
-			
-			log.error(errorString, ioException) ;
-			throw new PrinterClientException(errorString, ioException) ;			
-		}
-	}
-	
-	/** 
-	 * Método auxiliar para dividir el texto en líneas ajustadas al ancho disponible.
-	 * Este método divide el texto en varias líneas según el ancho máximo permitido,
-	 * utilizando la fuente y el tamaño de fuente especificados.
-	 * 
-	 * @param text El texto completo que se desea dividir en líneas.
-	 * @param width El ancho máximo disponible para cada línea de texto.
-	 * @param fontSize El tamaño de la fuente que se está utilizando para el texto.
-	 * @param font La fuente (`PDFont`) que se usará para calcular el ancho del texto.
-	 * @return Una lista de cadenas (`List<String>`) donde cada elemento representa una línea de texto ajustada.
-	 * @throws PrinterClientException Si ocurre un error relacionado con la impresión durante el procesamiento del texto.
-	 * @throws IOException Si ocurre un error de entrada/salida al calcular el ancho del texto.
-	 */
-	private List<String> crearPaginaNombreUsuarioObtenerLineas(String text, float width, float fontSize, PDFont font) throws PrinterClientException
-	{
-	    // Inicializamos una lista para almacenar las líneas de texto resultantes
-	    List<String> lines = new ArrayList<>() ;
-	    
-	    // Utilizamos StringBuilder para construir cada línea de texto de forma eficiente
-	    StringBuilder line = new StringBuilder() ;
-
-	    try
-	    {
-	    	// Iteramos sobre cada palabra en el texto separado por espacios
-	        for (String word : text.split(" "))
-	        {
-	            // Calculamos el ancho de la línea actual si agregamos la nueva palabra
-	            String testLine = line.length() == 0 ? word : line.toString() + " " + word ;
-	            float testLineWidth = font.getStringWidth(testLine) / 1000 * fontSize ;
-
-	            if (testLineWidth > width)
-	            {
-	                // Si la línea actual supera el ancho permitido, la agregamos a la lista
-	                lines.add(line.toString().trim()) ; // Agregar la línea sin espacios en blanco al principio o al final
-	                
-	                // Reiniciamos el StringBuilder para la siguiente línea con la palabra actual
-	                line = new StringBuilder(word) ;
-	            }
-	            else
-	            {
-	                // Si no supera el ancho, añadimos la palabra a la línea actual
-	                if (line.length() > 0)
-	                {
-	                    line.append(" ") ;
-	                }
-	                
-	                line.append(word) ;
-	            }
-	        }
-
-	        // Si hay texto en el StringBuilder al finalizar, lo añadimos como la última línea
-	        if (line.length() > 0) {
-	            lines.add(line.toString().trim()); // Agregar la última línea sin espacios en blanco al principio o al final
-	        }
-	    }
-	    catch (IOException ioException)
-	    {
-	        // Manejamos la excepción si ocurre un error de entrada/salida al calcular el ancho del texto
-	        String errorString = "IOException mientras se calculaba el ancho del texto para dividirlo en líneas";
-	        
-	        log.error(errorString, ioException);
-	        throw new PrinterClientException(errorString, ioException) ;
-	    }
-	    
-	    return lines ;
 	}
 	
 	/**
@@ -680,46 +554,12 @@ public class Print
 	}
 	
 	/**
-	 * @param dtoPrintAction DTO Print Action
-	 * @param pdPageExtra PD Page Extra
-	 * @param printerJob Printer JOB
-	 * @throws PrinterException con un error
-	 */
-	private void configurarEimprimirPaginaUsuario(DtoPrintAction dtoPrintAction, PDDocument pdPageExtra, PrinterJob printerJob) throws PrinterException
-	{
-		// Configuramos la impresión de la página del usuario
-		HashPrintRequestAttributeSet attributeSetPaginaUsuario = this.configurarPaginaUsuario(dtoPrintAction, pdPageExtra, printerJob) ;
-		
-		// Imprimimos la página del usuario
-		printerJob.print(attributeSetPaginaUsuario) ;
-	}
-	
-	/**
-	 * @param dtoPrintAction DTO Print Action
-	 * @param pdPageExtra PD Page Extra
-	 * @param printerJob printer job
-	 * @return mapa con los atributos de la página del usuario configurados
-	 */
-	private HashPrintRequestAttributeSet configurarPaginaUsuario(DtoPrintAction dtoPrintAction, PDDocument pdPageExtra, PrinterJob printerJob)
-	{
-		// Configuramos
-		HashPrintRequestAttributeSet outcome = new HashPrintRequestAttributeSet() ;
-		outcome.add(new Copies(1)) ;
-		
-		// La hacemos printable
-		printerJob.setPrintable(new PDFPrintable(pdPageExtra)) ;
-		
-		return outcome ;
-	}
-
-	/**
-	 *  Metodo encargado de cerrar todos los flujos utilizados en el metodo print
+	 * Metodo encargado de cerrar todos los flujos utilizados en el metodo print
 	 * @param pdDocument PD Document
-	 * @param pdPageExtra PD Page Extra
 	 * @param contenidoFichero contenido del fichero
 	 * @throws PrinterClientException con un error
 	 */
-	private void imprimirCierreFlujos(PDDocument pdDocument,PDDocument pdPageExtra, InputStream contenidoFichero) throws PrinterClientException
+	private void imprimirCierreFlujos(PDDocument pdDocument, InputStream contenidoFichero) throws PrinterClientException
 	{
 		if (pdDocument != null)
 		{
@@ -736,21 +576,6 @@ public class Print
 			}
 		}
 
-		if (pdPageExtra != null)
-		{
-			try
-			{
-				pdPageExtra.close() ;
-			}
-			catch (IOException ioException)
-			{
-				String errorString = "IOException mientras se cerraba PD Page Extra en el cierre de flujos de imprimir" ;
-				
-				log.error(errorString, ioException) ;
-				throw new PrinterClientException(errorString, ioException) ;
-			}
-		}
-		
 		if (contenidoFichero != null)
 		{
 			try
