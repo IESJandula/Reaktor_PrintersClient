@@ -53,6 +53,8 @@ public class SendPrinters
 	public void sendPrinters()
 	{
 		List<DtoPrinter> listDtoPrinters = new ArrayList<DtoPrinter>() ;
+		
+		log.debug("Se van a localizar la lista de impresoras") ;
 
 		// Pedimos la lista de todas las impresoras
 		PrintService[] printServices     = PrintServiceLookup.lookupPrintServices(null, null) ;
@@ -72,8 +74,14 @@ public class SendPrinters
 				{
 					try
 					{
+						log.debug("Se van a obtener información de la impresora {}", printer.getName()) ;
+						
 						// Obtenemos información de la impresora y la añadimos la impresora a la lista con los datos leídos
-						listDtoPrinters.add(this.printerInfoService.obtenerInfoImpresora(printer)) ;
+						DtoPrinter dtoPrinter = this.printerInfoService.obtenerInfoImpresora(printer) ;
+						
+						listDtoPrinters.add(dtoPrinter) ;
+						
+						log.debug("Se ha obtenido información de la impresora {} con estos datos: {}", printer.getName(), dtoPrinter) ;
 					}
 					catch (PrinterClientException printerClientException)
 					{
@@ -109,6 +117,8 @@ public class SendPrinters
 	{
 		try
 		{
+			log.debug("Se va a preparar la petición POST para actualizar el estado de las impresoras") ;
+			
 			// Asegúrate de que tu ObjectMapper esté correctamente configurado
 			ObjectMapper objectMapper = new ObjectMapper() ;
 			
@@ -127,9 +137,13 @@ public class SendPrinters
 			// Serialización de la entidad JSON asegurando UTF-8
 			StringEntity entity = new StringEntity(objectMapper.writeValueAsString(listDtoPrinters), StandardCharsets.UTF_8) ;
 			httpPost.setEntity(entity) ;
+			
+			log.debug("Se va a enviar la petición POST para actualizar el estado de las impresoras") ;
 	
 			// Enviamos la petición
 			httpClient.execute(httpPost) ;
+			
+			log.debug("Se ha enviado correctamente la petición POST para actualizar el estado de las impresoras") ;
 		}
 		catch (IOException ioException)
 		{

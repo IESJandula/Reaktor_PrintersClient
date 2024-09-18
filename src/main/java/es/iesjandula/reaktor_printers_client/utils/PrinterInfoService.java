@@ -35,10 +35,15 @@ public class PrinterInfoService
 		
 		try
 		{
+			log.debug("Se va lanzar el proceso en C# sobre la impresora {}", printer.getName()) ;
+			
 			// Lanzamos el proceso para que nos informe diciéndole que nos pase la información con tildes (primer comando)
 			process 	= Runtime.getRuntime().exec("cmd.exe /c chcp 65001 && " + 
 																Constants.PRINTERS_CLIENT_CONFIG_EXEC + File.separator + 
 																		"ConsoleApp1.exe \"" + printer.getName() + "\"") ;
+			
+			log.debug("Esperando a recibir el stream del proceso en C# sobre la impresora {}", printer.getName()) ;
+			
 			// Obtenemos el flujo de entrada
 			inputStream = process.getInputStream() ;
 			
@@ -57,6 +62,8 @@ public class PrinterInfoService
 									 scanner.nextLine(),
 									 Integer.valueOf(scanner.nextLine()),
 									 new Date()) ;
+			
+			log.debug("Recibido y procesado el stream del proceso en C# sobre la impresora {} con la información: {}", printer.getName(), outcome) ;
 		}
 		catch (IOException ioException)
 		{
