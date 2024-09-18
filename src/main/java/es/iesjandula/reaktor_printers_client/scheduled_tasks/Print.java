@@ -530,11 +530,11 @@ public class Print
 		// Configuramos color
 		if (dtoPrintAction.getBlackAndWhite())
 		{
-			outcome.add(Chromaticity.COLOR);
+			outcome.add(Chromaticity.MONOCHROME);
 		} 
 		else
 		{
-			outcome.add(Chromaticity.MONOCHROME);
+			outcome.add(Chromaticity.COLOR);			
 		}
 		
 		// Configuramos caras
