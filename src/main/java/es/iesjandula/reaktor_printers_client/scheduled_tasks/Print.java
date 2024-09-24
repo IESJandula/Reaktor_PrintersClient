@@ -13,6 +13,7 @@ import javax.print.PrintServiceLookup;
 import javax.print.attribute.HashPrintRequestAttributeSet;
 import javax.print.attribute.standard.Chromaticity;
 import javax.print.attribute.standard.Copies;
+import javax.print.attribute.standard.OrientationRequested;
 import javax.print.attribute.standard.Sides;
 
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -20,14 +21,11 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.printing.PDFPageable;
 import org.apache.pdfbox.printing.PDFPrintable;
-import org.apache.pdfbox.util.Matrix;
+import org.apache.pdfbox.printing.Scaling;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -215,28 +213,17 @@ public class Print
 	private void copiarContenidoInputStreamOriginal(DtoPrintAction outcome, InputStream contenidoFicheroOriginal) throws PrinterClientException
 	{
 		ByteArrayOutputStream buffer = new ByteArrayOutputStream() ;
-		
-		byte[] data = new byte[1024] ;
-		
+
 		try
 		{
-			// Leemos para ver si hemos llegado al final
-			int nRead = contenidoFicheroOriginal.read(data, 0, data.length) ;
-			
-			while (nRead != -1)
-			{
-				// Escribimos en el buffer
-			    buffer.write(data, 0, nRead) ;
-
-				// Leemos para ver si hemos llegado al final
-			    nRead = contenidoFicheroOriginal.read(data, 0, data.length) ;
-			}
-	
-			// Convertimos el contenido copiado a un ByteArrayInputStream (lo cerraremos al final)
-			ByteArrayInputStream contenidoFichero = new ByteArrayInputStream(buffer.toByteArray()) ;
-			
-			// Guardamos en el objeto outcome dentro del contenido del fichero
-			outcome.setContenidoFichero(contenidoFichero) ;
+	        // Transferimos directamente el contenido del InputStream al ByteArrayOutputStream
+	        contenidoFicheroOriginal.transferTo(buffer) ;
+	        
+	        // Convertimos el contenido copiado a un ByteArrayInputStream
+	        ByteArrayInputStream contenidoFichero = new ByteArrayInputStream(buffer.toByteArray());
+	        
+	        // Guardamos en el objeto outcome dentro del contenido del fichero
+	        outcome.setContenidoFichero(contenidoFichero);
 		}
 		catch (IOException ioException)
 		{
@@ -261,6 +248,22 @@ public class Print
 					log.error(errorString, ioException) ;
 					throw new PrinterClientException(errorString, ioException) ;	
 				}
+			}
+			
+			if (buffer != null)
+			{
+				try
+				{
+					// Cerramos el buffer ya que ya copiamos el contenido
+					buffer.close() ;
+				}
+				catch (IOException ioException)
+				{
+					String errorString = "IOException mientras se cerraba el buffer 'contenidoFicheroOriginal' en nuestro objeto interno" ;
+					
+					log.error(errorString, ioException) ;
+					throw new PrinterClientException(errorString, ioException) ;	
+				}				
 			}
 		}
 	}
@@ -311,11 +314,11 @@ public class Print
 	        // Seleccionamos la impresora
 	        printerJob.setPrintService(selectedPrinter);
 
+  	        // Obtenemos el contenido del documento en pdfBytes
+	        byte[] pdfBytes = dtoPrintAction.getContenidoFichero().readAllBytes() ;
+	        
 	        // Introducimos el contenido del documento
-	        pdDocument = PDDocument.load(dtoPrintAction.getContenidoFichero());
-
-	        // Añadir el nombre del usuario al PDF en la primera página
-	        this.agregarInfoProfesorEnPrimeraPagina(pdDocument, dtoPrintAction.getUser());
+			pdDocument = Loader.loadPDF(pdfBytes) ;
 
 	        // Configurar e imprimir documento
 	        this.configurarEimprimirDocumento(dtoPrintAction, pdDocument, printerJob);
@@ -336,81 +339,6 @@ public class Print
 	    {
 	        // Cerramos los flujos
 	        this.imprimirCierreFlujos(pdDocument, dtoPrintAction.getContenidoFichero());
-	    }
-	}
-
-	/**
-	 * @param pdDocument PD Document
-	 * @param userName nombre y apellidos del usuario
-	 * @throws PrinterClientException con un error
-	 */
-	private void agregarInfoProfesorEnPrimeraPagina(PDDocument pdDocument, String userName) throws PrinterClientException
-	{
-	    // Obtenemos la primera página
-	    PDPage firstPage = pdDocument.getPage(0) ;
-	    
-	    PDPageContentStream contentStream = null ;
-
-	    try
-	    {
-	    	// Creamos un flujo de contenido para la primera página
-	    	contentStream = new PDPageContentStream(pdDocument, firstPage, PDPageContentStream.AppendMode.APPEND, true, true) ;
-	    	
-	        // Configuramos el texto para que se escriba verticalmente
-	        PDFont font = PDType1Font.HELVETICA_BOLD;
-	        float fontSize = 12;
-	        contentStream.setFont(font, fontSize);
-
-	        // Obtenemos dimensiones de la página
-	        float pageHeight = firstPage.getMediaBox().getHeight();
-
-	        // Calculamos la altura total del texto
-	        float textHeight = fontSize * userName.length();
-
-	        // Calculamos la posición de inicio centrada verticalmente
-	        float startX = 20; // Margen izquierdo
-	        float startY = (pageHeight + textHeight) / 2; // Centro vertical
-
-	        // Escribimos cada letra verticalmente
-	        contentStream.beginText();
-
-	        // Configuramos la posición inicial usando Matrix
-	        contentStream.setTextMatrix(Matrix.getTranslateInstance(startX, startY));
-	        
-	        // Escribimos cada letra una debajo de la otra
-	        for (char c : userName.toCharArray())
-	        {
-	            contentStream.showText(String.valueOf(c));
-	            contentStream.newLineAtOffset(0, -fontSize); // Movemos hacia abajo para la siguiente letra
-	        }
-	        
-	        contentStream.endText();
-	        
-	        
-	    }
-	    catch (IOException ioException)
-	    {
-			String errorString = "IOException mientras se añadía información del usuario a la primera página de su pdf" ;
-			
-			log.error(errorString, ioException) ;
-			throw new PrinterClientException(errorString, ioException) ;
-		}
-	    finally
-	    {
-	    	if (contentStream != null)
-	    	{
-	    		try
-	    		{
-					contentStream.close() ;
-				}
-	    		catch (IOException ioException)
-	    		{
-	    			String errorString = "IOException mientras se cerraba el flujo que añadía información del usuario a la primera página de su pdf" ;
-	    			
-	    			log.error(errorString, ioException) ;
-	    			throw new PrinterClientException(errorString, ioException) ;
-				}
-	    	}
 	    }
 	}
 
@@ -485,37 +413,46 @@ public class Print
 	 */
 	private void configurarEimprimirDocumento(DtoPrintAction dtoPrintAction, PDDocument pdDocument, PrinterJob printerJob) throws PrinterException
 	{
-		// Configuramos la orientación
-		this.configurarOrientacion(dtoPrintAction, pdDocument, printerJob) ;
-		
-		// Configuramos color, caras y copias
-		HashPrintRequestAttributeSet attributeSetDocumentoPrincipal = this.configurarColorCarasYcopias(dtoPrintAction, printerJob) ;
-		
-		// Imprimimos el documento principal
-		printerJob.print(attributeSetDocumentoPrincipal) ;
+	    // Configuramos color, caras y copias
+	    HashPrintRequestAttributeSet attributeSetDocumentoPrincipal = this.configurarColorCarasYcopias(dtoPrintAction, printerJob) ;
+
+	    // Configuramos la orientación (actualizado)
+	    this.configurarOrientacion(dtoPrintAction, pdDocument, printerJob, attributeSetDocumentoPrincipal) ;
+
+	    // Imprimimos el documento principal
+	    printerJob.print(attributeSetDocumentoPrincipal) ;
 	}
 	
 	/**
 	 * @param dtoPrintAction DTO Print Action
 	 * @param pdDocument PD Document
 	 * @param printerJob printer job
+	 * @param attributeSetDocumentoPrincipal attribute set documento principal
 	 */
-	private void configurarOrientacion(DtoPrintAction dtoPrintAction, PDDocument pdDocument, PrinterJob printerJob)
+	private void configurarOrientacion(DtoPrintAction dtoPrintAction,
+									   PDDocument pdDocument,
+									   PrinterJob printerJob,
+									   HashPrintRequestAttributeSet attributeSetDocumentoPrincipal)
 	{
-		PDFPageable pageable = new PDFPageable(pdDocument) ;
-		PageFormat format = pageable.getPageFormat(0) ;
-		
-		if (dtoPrintAction.getVertical())
-		{
+	    // Ajustamos la orientación según el documento
+	    if (dtoPrintAction.getVertical())
+	    {
+			PDFPageable pageable = new PDFPageable(pdDocument) ;
+			PageFormat format = pageable.getPageFormat(0) ;
+			
 			format.setOrientation(PageFormat.PORTRAIT) ;
-		}
-		else
-		{
-			format.setOrientation(PageFormat.LANDSCAPE) ;
-		}
-
-		// La hacemos printable
-		printerJob.setPrintable(new PDFPrintable(pdDocument), format) ;
+	    	
+			// La hacemos printable
+			printerJob.setPrintable(new PDFPrintable(pdDocument), format) ;
+	    }
+	    else
+	    {
+	    	// Horizontal
+	        attributeSetDocumentoPrincipal.add(OrientationRequested.LANDSCAPE) ;
+	        
+		    // Establecemos el printable al printerJob adaptándola al espacio
+		    printerJob.setPrintable(new PDFPrintable(pdDocument, Scaling.SHRINK_TO_FIT)) ;
+	    }
 	}
 	
 	/**
@@ -637,3 +574,4 @@ public class Print
 		}
 	}
 }
+
