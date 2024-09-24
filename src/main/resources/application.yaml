@@ -2,7 +2,7 @@ server:
   port: 8081
 logging:
     level:
-        root: INFO
+        es.iesjandula: INFO
     file:
         name: C:\logs\reaktor_reaktor_printersclient.log
         max-size: 1MB
@@ -13,7 +13,8 @@ reaktor:
   fixedDelayString:
     sendPrinters: "60000"
     print: "5000"
-  bannedPrinters: Microsoft XPS Document Writer, Fax, OneNote for Windows 10, Send To OneNote 2016, Microsoft Print to PDF, AnyDesk Printer, OneNote (Desktop)
+  bannedPrinters: Microsoft XPS Document Writer, Fax, OneNote for Windows 10, Send To OneNote 2016, AnyDesk Printer, OneNote (Desktop)
   printers_server_url: "http://localhost:8082/"
   firebase_server_url: "http://localhost:8083/"
   uidFile: C:\claves\uid_file.txt
+  threadsNumber: 10
