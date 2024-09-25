@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import es.iesjandula.base.base_server.firebase.AuthorizationService;
+import es.iesjandula.base.base_server.security.service.AuthorizationService;
 import es.iesjandula.base.base_server.utils.BaseServerException;
 import es.iesjandula.reaktor_printers_client.dto.DtoPrinter;
 import es.iesjandula.reaktor_printers_client.utils.PrinterClientException;

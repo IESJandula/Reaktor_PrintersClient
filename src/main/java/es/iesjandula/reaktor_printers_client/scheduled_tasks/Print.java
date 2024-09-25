@@ -31,7 +31,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import es.iesjandula.base.base_server.firebase.AuthorizationService;
+import es.iesjandula.base.base_server.security.service.AuthorizationService;
 import es.iesjandula.base.base_server.utils.BaseServerException;
 import es.iesjandula.reaktor_printers_client.dto.DtoPrintAction;
 import es.iesjandula.reaktor_printers_client.dto.DtoPrinter;
