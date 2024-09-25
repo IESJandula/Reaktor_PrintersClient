@@ -54,7 +54,7 @@ public class SendPrinters
 	{
 		List<DtoPrinter> listDtoPrinters = new ArrayList<DtoPrinter>() ;
 		
-		log.debug("Se van a localizar la lista de impresoras") ;
+		log.info("Se van a localizar la lista de impresoras") ;
 
 		// Pedimos la lista de todas las impresoras
 		PrintService[] printServices     = PrintServiceLookup.lookupPrintServices(null, null) ;
@@ -143,7 +143,7 @@ public class SendPrinters
 			// Enviamos la petición
 			httpClient.execute(httpPost) ;
 			
-			log.debug("Se ha enviado correctamente la petición POST para actualizar el estado de las impresoras") ;
+			log.info("Se ha enviado correctamente la petición POST para actualizar el estado de las impresoras") ;
 		}
 		catch (IOException ioException)
 		{

@@ -62,6 +62,8 @@ public class Print
 	@Scheduled(fixedDelayString = "${reaktor.fixedDelayString.print}")
 	public void imprimir()
 	{
+		log.info("Se va a comprobar si hay algo para imprimir") ;
+		
 		CloseableHttpClient httpClient = HttpClients.createDefault() ;
 
 		DtoPrintAction dtoPrintAction = null ;
