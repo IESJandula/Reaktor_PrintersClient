@@ -62,7 +62,7 @@ public class Print
 	@Scheduled(fixedDelayString = "${reaktor.fixedDelayString.print}")
 	public void imprimir()
 	{
-		log.info("Se va a comprobar si hay algo para imprimir") ;
+		log.info("INICIO - Comprobación de si hay algo para imprimir") ;
 		
 		CloseableHttpClient httpClient = HttpClients.createDefault() ;
 
@@ -96,6 +96,8 @@ public class Print
 		{
 			log.error("Error al cerrar CloseableHttpClient: " + ioException.getMessage(), ioException) ;
 		}
+		
+		log.info("FIN - Comprobación de si hay algo para imprimir") ;
 	}
 
 	/**
