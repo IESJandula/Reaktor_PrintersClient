@@ -95,16 +95,13 @@ public class SendPrinters
 		} 
 		finally
 		{
-			if (httpClient != null)
+			try
 			{
-				try
-				{
-					httpClient.close() ;
-				}
-				catch (IOException ioException)
-				{
-					log.error("IOException en httpClient mientras se cerraba el flujo de datos", ioException) ;
-				}
+				httpClient.close() ;
+			}
+			catch (IOException ioException)
+			{
+				log.error("IOException en httpClient mientras se cerraba el flujo de datos", ioException) ;
 			}
 		}
 	}
