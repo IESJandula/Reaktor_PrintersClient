@@ -422,9 +422,15 @@ public class Print
 
 	    // Configuramos la orientación (actualizado)
 	    this.configurarOrientacion(dtoPrintAction, pdDocument, printerJob, attributeSetDocumentoPrincipal) ;
+	    
+	    // Logueamos
+	    log.info("IMPRESION - Se va a enviar a la cola de impresión") ;
 
 	    // Imprimimos el documento principal
 	    printerJob.print(attributeSetDocumentoPrincipal) ;
+	    
+	    // Logueamos
+	    log.info("IMPRESION - Se ha realizado la impresión") ;
 	}
 	
 	/**
