@@ -16,4 +16,4 @@ reaktor:
   firebase_server_url: "http://localhost:8083/"
   uidFile: C:\claves\uid_file.txt
   threadsNumber: 10
-  print_timeout: 30000
+  print_timeout: 60000
