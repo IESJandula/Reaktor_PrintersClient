@@ -57,7 +57,7 @@ public class SendPrinters
 		LocalTime currentTime = LocalTime.now(ZoneId.of("Europe/Madrid")) ;
 		
 		// Verifica si está en el rango (7:45 - 20:30)
-	    if (currentTime.isAfter(LocalTime.of(7, 45)) || currentTime.isBefore(LocalTime.of(20, 30)))
+	    if (currentTime.isAfter(LocalTime.of(7, 45)) && currentTime.isBefore(LocalTime.of(20, 30)))
 	    {
 		
 			List<DtoPrinter> listDtoPrinters = new ArrayList<DtoPrinter>() ;
