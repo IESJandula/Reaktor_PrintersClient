@@ -1,20 +1,16 @@
 package es.iesjandula.reaktor_printers_client.scheduled_tasks;
 
-import java.awt.print.PageFormat;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalTime;
+import java.time.ZoneId;
 
 import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
-import javax.print.attribute.HashPrintRequestAttributeSet;
-import javax.print.attribute.standard.Chromaticity;
-import javax.print.attribute.standard.Copies;
-import javax.print.attribute.standard.OrientationRequested;
-import javax.print.attribute.standard.Sides;
 
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -23,9 +19,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.printing.PDFPageable;
-import org.apache.pdfbox.printing.PDFPrintable;
-import org.apache.pdfbox.printing.Scaling;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -50,6 +43,9 @@ public class Print
 	@Value("${reaktor.printers_server_url}")
 	private String printersServerUrl ;
 	
+	@Value("${reaktor.print_timeout}")
+	private long printTimeout ;
+	
 	@Autowired
 	private AuthorizationService authorizationService ;
 	
@@ -59,45 +55,51 @@ public class Print
 	/**
 	 * Funcion que cada X tiempo pregunta al servidor si hay que imprimir algo y si lo hay lo imprime
 	 */
-	@Scheduled(fixedDelayString = "${reaktor.fixedDelayString.print}")
+	@Scheduled(cron = "${reaktor.cron}", zone = "Europe/Madrid")
 	public void imprimir()
 	{
-		log.info("INICIO - Comprobación de si hay algo para imprimir") ;
+		LocalTime currentTime = LocalTime.now(ZoneId.of("Europe/Madrid")) ;
 		
-		CloseableHttpClient httpClient = HttpClients.createDefault() ;
-
-		DtoPrintAction dtoPrintAction = null ;
-		try
-		{
-			// Buscamos la tarea para imprimir
-			dtoPrintAction = this.buscarTareaParaImprimir(httpClient) ;
+		// Verifica si está en el rango (7:45 - 20:30)
+	    if (currentTime.isAfter(LocalTime.of(7, 45)) || currentTime.isBefore(LocalTime.of(20, 30)))
+	    {
+	    	log.info("PRINT - INICIO - Comprobación de si hay algo para imprimir") ;
 			
-			// Si hay ninguna acción que hacer ...
-			if (dtoPrintAction != null)
+			CloseableHttpClient httpClient = HttpClients.createDefault() ;
+
+			DtoPrintAction dtoPrintAction = null ;
+			try
 			{
-				// Logueamos
-				log.info("Se ha encontrado una tarea para imprimir: {}", dtoPrintAction) ;
+				// Buscamos la tarea para imprimir
+				dtoPrintAction = this.buscarTareaParaImprimir(httpClient) ;
 				
-				// Imprimimos
-				this.imprimirInternal(httpClient, dtoPrintAction) ;	
+				// Si hay ninguna acción que hacer ...
+				if (dtoPrintAction != null)
+				{
+					// Logueamos
+					log.info("Se ha encontrado una tarea para imprimir: {}", dtoPrintAction) ;
+					
+					// Imprimimos
+					this.imprimirInternal(httpClient, dtoPrintAction) ;	
+				}
 			}
-		}
-		catch (PrinterClientException | BaseServerException reaktorException)
-		{
-			// Logueada previamente en el método
-		}
-		
-		try
-		{
-			// Cerramos el CloseableHttpClient
-			httpClient.close() ;
-		}
-		catch (IOException ioException)
-		{
-			log.error("Error al cerrar CloseableHttpClient: " + ioException.getMessage(), ioException) ;
-		}
-		
-		log.info("FIN - Comprobación de si hay algo para imprimir") ;
+			catch (PrinterClientException | BaseServerException reaktorException)
+			{
+				// Logueada previamente en el método
+			}
+			
+			try
+			{
+				// Cerramos el CloseableHttpClient
+				httpClient.close() ;
+			}
+			catch (IOException ioException)
+			{
+				log.error("Error al cerrar CloseableHttpClient: " + ioException.getMessage(), ioException) ;
+			}
+			
+			log.info("PRINT - FIN - Comprobación de si hay algo para imprimir") ;
+	    }
 	}
 
 	/**
@@ -323,21 +325,23 @@ public class Print
 	        
 	        // Introducimos el contenido del documento
 			pdDocument = Loader.loadPDF(pdfBytes) ;
-
-	        // Configurar e imprimir documento
-	        this.configurarEimprimirDocumento(dtoPrintAction, pdDocument, printerJob);
+			
+			// Creamos y lanzamos el Thread
+			this.crearYlanzarElThreadImpresion(dtoPrintAction, pdDocument, printerJob) ; 
 	    }
 	    catch (PrinterException printerException)
 	    {
-	        String errorString = "PrinterException mientras se imprimía el documento";
-	        log.error(errorString, printerException);
-	        throw new PrinterClientException(errorString, printerException);
+	        String errorString = "PrinterException mientras se imprimía el documento" ;
+	        
+	        log.error(errorString, printerException) ;
+	        throw new PrinterClientException(errorString, printerException) ;
 	    }
 	    catch (IOException ioException)
 	    {
-	        String errorString = "IOException mientras se introducía el contenido del fichero a imprimir";
-	        log.error(errorString, ioException);
-	        throw new PrinterClientException(errorString, ioException);
+	        String errorString = "IOException mientras se introducía el contenido del fichero a imprimir" ;
+	        
+	        log.error(errorString, ioException) ;
+	        throw new PrinterClientException(errorString, ioException) ;
 	    }
 	    finally
 	    {
@@ -413,91 +417,47 @@ public class Print
 	 * @param dtoPrintAction DTO Print Action
 	 * @param pdDocument PD Document
 	 * @param printerJob Printer JOB
-	 * @throws PrinterException con un error
+	 * @throws PrinterClientException con un error
 	 */
-	private void configurarEimprimirDocumento(DtoPrintAction dtoPrintAction, PDDocument pdDocument, PrinterJob printerJob) throws PrinterException
+	private void crearYlanzarElThreadImpresion(DtoPrintAction dtoPrintAction, PDDocument pdDocument, PrinterJob printerJob) throws PrinterClientException
 	{
-	    // Configuramos color, caras y copias
-	    HashPrintRequestAttributeSet attributeSetDocumentoPrincipal = this.configurarColorCarasYcopias(dtoPrintAction, printerJob) ;
-
-	    // Configuramos la orientación (actualizado)
-	    this.configurarOrientacion(dtoPrintAction, pdDocument, printerJob, attributeSetDocumentoPrincipal) ;
-	    
-	    // Logueamos
-	    log.info("IMPRESION - Se va a enviar a la cola de impresión") ;
-
-	    // Imprimimos el documento principal
-	    printerJob.print(attributeSetDocumentoPrincipal) ;
-	    
-	    // Logueamos
-	    log.info("IMPRESION - Se ha realizado la impresión") ;
-	}
-	
-	/**
-	 * @param dtoPrintAction DTO Print Action
-	 * @param pdDocument PD Document
-	 * @param printerJob printer job
-	 * @param attributeSetDocumentoPrincipal attribute set documento principal
-	 */
-	private void configurarOrientacion(DtoPrintAction dtoPrintAction,
-									   PDDocument pdDocument,
-									   PrinterJob printerJob,
-									   HashPrintRequestAttributeSet attributeSetDocumentoPrincipal)
-	{
-	    // Ajustamos la orientación según el documento
-	    if (dtoPrintAction.getVertical())
-	    {
-			PDFPageable pageable = new PDFPageable(pdDocument) ;
-			PageFormat format = pageable.getPageFormat(0) ;
+		try
+		{
+			// Creamos la instancia
+			PrintThread printThread = new PrintThread(dtoPrintAction, pdDocument, printerJob) ;
 			
-			format.setOrientation(PageFormat.PORTRAIT) ;
-	    	
-			// La hacemos printable
-			printerJob.setPrintable(new PDFPrintable(pdDocument), format) ;
-	    }
-	    else
-	    {
-	    	// Horizontal
-	        attributeSetDocumentoPrincipal.add(OrientationRequested.LANDSCAPE) ;
-	        
-		    // Establecemos el printable al printerJob adaptándola al espacio
-		    printerJob.setPrintable(new PDFPrintable(pdDocument, Scaling.SHRINK_TO_FIT)) ;
-	    }
-	}
+			// Lanzamos el Thread
+			printThread.start() ;
+			
+	        // Esperamos a que el hilo termine o exceda el tiempo límite
+	        printThread.join(this.printTimeout) ;
 	
-	/**
-	 * @param dtoPrintAction DTO Print Action
-	 * @param printerJob printer job
-	 * @return mapa con los atributos de la página a imprirmir configurados
-	 */
-	private HashPrintRequestAttributeSet configurarColorCarasYcopias(DtoPrintAction dtoPrintAction, PrinterJob printerJob)
-	{
-		HashPrintRequestAttributeSet outcome = new HashPrintRequestAttributeSet();
-		
-		// Configuramos color
-		if (dtoPrintAction.getBlackAndWhite())
-		{
-			outcome.add(Chromaticity.MONOCHROME);
-		} 
-		else
-		{
-			outcome.add(Chromaticity.COLOR);			
+	        // Verificamos si sigue vivo (excedió el tiempo)
+	        if (printThread.isAlive())
+	        {
+	            // Interrumpimos el hilo
+	            printThread.interrupt() ;
+	
+	            String errorString = "La tarea de impresión excedió el tiempo de espera y fue interrumpida" ;
+	            
+	            // Logueamos el timeout y lanzamos excepción
+	            log.error(errorString) ;
+	            throw new PrinterClientException(errorString) ;
+	        }
+	        
+	        // Revisamos si ocurrió una excepción durante la impresión
+	        if (printThread.getException() != null)
+	        {
+	            throw new PrinterClientException("Error en el hilo de impresión", printThread.getException()) ;
+	        }
 		}
-		
-		// Configuramos caras
-		if (dtoPrintAction.getTwoSides())
+		catch (InterruptedException interruptedException)
 		{
-			outcome.add(Sides.DUPLEX);
-		} 
-		else
-		{
-			outcome.add(Sides.ONE_SIDED);
-		}
-		
-		// Configuramos copias
-		outcome.add(new Copies(dtoPrintAction.getCopies())) ;
-		
-		return outcome ;
+	        String errorString = "El hilo de impresión fue interrumpido" ;
+	        
+	        log.error(errorString, interruptedException) ;
+	        throw new PrinterClientException(errorString, interruptedException);
+	    }
 	}
 	
 	/**

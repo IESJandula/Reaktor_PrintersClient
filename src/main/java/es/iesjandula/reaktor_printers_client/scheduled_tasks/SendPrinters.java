@@ -2,6 +2,8 @@ package es.iesjandula.reaktor_printers_client.scheduled_tasks;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -49,61 +51,68 @@ public class SendPrinters
 	/**
 	 * Metodo encargado de enviar la informacion de las impresoras
 	 */
-	@Scheduled(fixedDelayString = "${reaktor.fixedDelayString.sendPrinters}")
+	@Scheduled(cron = "${reaktor.cron}", zone = "Europe/Madrid")
 	public void sendPrinters()
 	{
-		List<DtoPrinter> listDtoPrinters = new ArrayList<DtoPrinter>() ;
+		LocalTime currentTime = LocalTime.now(ZoneId.of("Europe/Madrid")) ;
 		
-		log.info("Se van a localizar la lista de impresoras") ;
-
-		// Pedimos la lista de todas las impresoras
-		PrintService[] printServices     = PrintServiceLookup.lookupPrintServices(null, null) ;
+		// Verifica si está en el rango (7:45 - 20:30)
+	    if (currentTime.isAfter(LocalTime.of(7, 45)) || currentTime.isBefore(LocalTime.of(20, 30)))
+	    {
 		
-		// Introducimos aquí las banneadas
-		List<String> bannedPrinters      = Arrays.asList(this.bannedPrinters) ;
-		
-		CloseableHttpClient httpClient   = HttpClients.createDefault() ;
-		
-		try
-		{
-			// Iteramos sobre todas las impresoras encontradas
-			for (PrintService printer : printServices)
-			{
-				// Si la impresora no está baneada, la procesamos
-				if (!bannedPrinters.contains(printer.getName()))
-				{
-					try
-					{
-						log.debug("Se van a obtener información de la impresora {}", printer.getName()) ;
-						
-						// Obtenemos información de la impresora y la añadimos la impresora a la lista con los datos leídos
-						DtoPrinter dtoPrinter = this.printerInfoService.obtenerInfoImpresora(printer) ;
-						
-						listDtoPrinters.add(dtoPrinter) ;
-						
-						log.debug("Se ha obtenido información de la impresora {} con estos datos: {}", printer.getName(), dtoPrinter) ;
-					}
-					catch (PrinterClientException printerClientException)
-					{
-						// Ya logueado, lo malo que no se puede obtener información de esta impresora
-					}
-				}
-			}
-
-			// Enviamos la petición POST
-			this.enviarPeticionPost(httpClient, listDtoPrinters) ;
-		} 
-		finally
-		{
+			List<DtoPrinter> listDtoPrinters = new ArrayList<DtoPrinter>() ;
+			
+			log.info("SEND_PRINTERS - INICIO - Localizar lista de impresoras") ;
+	
+			// Pedimos la lista de todas las impresoras
+			PrintService[] printServices     = PrintServiceLookup.lookupPrintServices(null, null) ;
+			
+			// Introducimos aquí las banneadas
+			List<String> bannedPrinters      = Arrays.asList(this.bannedPrinters) ;
+			
+			CloseableHttpClient httpClient   = HttpClients.createDefault() ;
+			
 			try
 			{
-				httpClient.close() ;
-			}
-			catch (IOException ioException)
+				// Iteramos sobre todas las impresoras encontradas
+				for (PrintService printer : printServices)
+				{
+					// Si la impresora no está baneada, la procesamos
+					if (!bannedPrinters.contains(printer.getName()))
+					{
+						try
+						{
+							log.debug("SEND_PRINTERS - INICIO - Info impresora {}", printer.getName()) ;
+							
+							// Obtenemos información de la impresora y la añadimos la impresora a la lista con los datos leídos
+							DtoPrinter dtoPrinter = this.printerInfoService.obtenerInfoImpresora(printer) ;
+							
+							listDtoPrinters.add(dtoPrinter) ;
+							
+							log.debug("SEND_PRINTERS - FIN - Info impresora {} con estos datos: {}", printer.getName(), dtoPrinter) ;
+						}
+						catch (PrinterClientException printerClientException)
+						{
+							// Ya logueado, lo malo que no se puede obtener información de esta impresora
+						}
+					}
+				}
+	
+				// Enviamos la petición POST
+				this.enviarPeticionPost(httpClient, listDtoPrinters) ;
+			} 
+			finally
 			{
-				log.error("IOException en httpClient mientras se cerraba el flujo de datos", ioException) ;
+				try
+				{
+					httpClient.close() ;
+				}
+				catch (IOException ioException)
+				{
+					log.error("IOException en httpClient mientras se cerraba el flujo de datos", ioException) ;
+				}
 			}
-		}
+	    }
 	}
 
 	/**
@@ -114,7 +123,7 @@ public class SendPrinters
 	{
 		try
 		{
-			log.debug("Se va a preparar la petición POST para actualizar el estado de las impresoras") ;
+			log.debug("SEND_PRINTERS - POST - Inicio Método - Estado de las impresoras") ;
 			
 			// Asegúrate de que tu ObjectMapper esté correctamente configurado
 			ObjectMapper objectMapper = new ObjectMapper() ;
@@ -135,12 +144,12 @@ public class SendPrinters
 			StringEntity entity = new StringEntity(objectMapper.writeValueAsString(listDtoPrinters), StandardCharsets.UTF_8) ;
 			httpPost.setEntity(entity) ;
 			
-			log.debug("Se va a enviar la petición POST para actualizar el estado de las impresoras") ;
+			log.debug("SEND_PRINTERS - POST - Envío - Actualizar el estado de las impresoras") ;
 	
 			// Enviamos la petición
 			httpClient.execute(httpPost) ;
 			
-			log.info("Se ha enviado correctamente la petición POST para actualizar el estado de las impresoras") ;
+			log.info("SEND_PRINTERS - FIN - Localizar lista de impresoras") ;
 		}
 		catch (IOException ioException)
 		{

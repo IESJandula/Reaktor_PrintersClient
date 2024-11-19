@@ -10,11 +10,10 @@ logging:
         total-size-cap: 10MB
 reaktor:
   publicKeyFile: ${PUBLIC_KEY_FILE}
-  fixedDelayString:
-    sendPrinters: "5000"
-    print: "5000"
+  cron: "*/30 * 7-19 * * MON-FRI"
   bannedPrinters: Microsoft XPS Document Writer, Fax, OneNote for Windows 10, Send To OneNote 2016, Microsoft Print to PDF, AnyDesk Printer, OneNote (Desktop)
   printers_server_url: "https://api.iesjandula.es/"
   firebase_server_url: "https://api.iesjandula.es/"
   uidFile: C:\claves\uid_file.txt
   threadsNumber: 10
+  print_timeout: 30000
