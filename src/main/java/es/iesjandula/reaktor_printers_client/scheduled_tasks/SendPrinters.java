@@ -1,6 +1,7 @@
 package es.iesjandula.reaktor_printers_client.scheduled_tasks;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -12,9 +13,9 @@ import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
 
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -24,6 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import es.iesjandula.base.base_server.security.service.AuthorizationService;
 import es.iesjandula.base.base_server.utils.BaseServerException;
+import es.iesjandula.base.base_server.utils.HttpClientUtils;
 import es.iesjandula.reaktor_printers_client.dto.DtoPrinter;
 import es.iesjandula.reaktor_printers_client.utils.PrinterClientException;
 import es.iesjandula.reaktor_printers_client.utils.PrinterInfoService;
@@ -41,6 +43,9 @@ public class SendPrinters
 	
 	@Value("${reaktor.bannedPrinters}")
 	private String[] bannedPrinters ;
+	
+	@Value("${reaktor.http_connection_timeout}")
+	private int httpConnectionTimeout ;
 	
 	@Autowired
 	private PrinterInfoService printerInfoService ;
@@ -65,12 +70,12 @@ public class SendPrinters
 			log.info("SEND_PRINTERS - INICIO - Localizar lista de impresoras") ;
 	
 			// Pedimos la lista de todas las impresoras
-			PrintService[] printServices     = PrintServiceLookup.lookupPrintServices(null, null) ;
+			PrintService[] printServices     		= PrintServiceLookup.lookupPrintServices(null, null) ;
 			
 			// Introducimos aquí las banneadas
-			List<String> bannedPrinters      = Arrays.asList(this.bannedPrinters) ;
+			List<String> bannedPrinters      		= Arrays.asList(this.bannedPrinters) ;
 			
-			CloseableHttpClient httpClient   = HttpClients.createDefault() ;
+			CloseableHttpClient closeableHttpClient = HttpClientUtils.crearHttpClientConTimeout(this.httpConnectionTimeout) ;
 			
 			try
 			{
@@ -99,13 +104,13 @@ public class SendPrinters
 				}
 	
 				// Enviamos la petición POST
-				this.enviarPeticionPost(httpClient, listDtoPrinters) ;
+				this.enviarPeticionPost(closeableHttpClient, listDtoPrinters) ;
 			} 
 			finally
 			{
 				try
 				{
-					httpClient.close() ;
+					closeableHttpClient.close() ;
 				}
 				catch (IOException ioException)
 				{
@@ -114,7 +119,7 @@ public class SendPrinters
 			}
 	    }
 	}
-
+	
 	/**
 	 * @param httpClient HTTP Client
 	 * @param listDtoPrinters lista de DTO printers
@@ -135,7 +140,7 @@ public class SendPrinters
 			HttpPost httpPost = new HttpPost(this.printersServerUrl + "/printers/client/printers") ;
 			
 			// Añadimos el token a la llamada
-			httpPost.addHeader("Authorization", "Bearer " + this.authorizationService.obtenerTokenPersonalizado()) ;
+			httpPost.addHeader("Authorization", "Bearer " + this.authorizationService.obtenerTokenPersonalizado(this.httpConnectionTimeout)) ;
 			
 			// Indicamos que viaja un JSON
 			httpPost.setHeader("Content-type", "application/json") ;
@@ -151,6 +156,14 @@ public class SendPrinters
 			
 			log.info("SEND_PRINTERS - FIN - Localizar lista de impresoras") ;
 		}
+		catch (SocketTimeoutException socketTimeoutException)
+		{
+			log.error("SocketTimeoutException de lectura o escritura al comunicarse con el servidor (info impresoras)", socketTimeoutException) ;
+        }
+		catch (ConnectTimeoutException connectTimeoutException)
+		{
+			log.error("ConnectTimeoutException al intentar conectar con el servidor (info impresoras)", connectTimeoutException) ;
+        }
 		catch (IOException ioException)
 		{
 			log.error("IOException mientras se enviaba la petición POST con el estado de las impresoras", ioException) ;

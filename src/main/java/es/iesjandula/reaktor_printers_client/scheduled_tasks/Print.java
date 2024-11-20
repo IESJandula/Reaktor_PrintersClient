@@ -6,6 +6,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.SocketTimeoutException;
 import java.time.LocalTime;
 import java.time.ZoneId;
 
@@ -15,8 +16,8 @@ import javax.print.PrintServiceLookup;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Component;
 
 import es.iesjandula.base.base_server.security.service.AuthorizationService;
 import es.iesjandula.base.base_server.utils.BaseServerException;
+import es.iesjandula.base.base_server.utils.HttpClientUtils;
 import es.iesjandula.reaktor_printers_client.dto.DtoPrintAction;
 import es.iesjandula.reaktor_printers_client.dto.DtoPrinter;
 import es.iesjandula.reaktor_printers_client.utils.Constants;
@@ -46,6 +48,9 @@ public class Print
 	@Value("${reaktor.print_timeout}")
 	private long printTimeout ;
 	
+	@Value("${reaktor.http_connection_timeout}")
+	private int httpConnectionTimeout ;
+	
 	@Autowired
 	private AuthorizationService authorizationService ;
 	
@@ -65,13 +70,14 @@ public class Print
 	    {
 	    	log.info("PRINT - INICIO - Comprobación de si hay algo para imprimir") ;
 			
-			CloseableHttpClient httpClient = HttpClients.createDefault() ;
+	    	// Creamos un HTTP Client con Timeout
+			CloseableHttpClient closeableHttpClient = HttpClientUtils.crearHttpClientConTimeout(this.httpConnectionTimeout) ;
 
 			DtoPrintAction dtoPrintAction = null ;
 			try
 			{
 				// Buscamos la tarea para imprimir
-				dtoPrintAction = this.buscarTareaParaImprimir(httpClient) ;
+				dtoPrintAction = this.buscarTareaParaImprimir(closeableHttpClient) ;
 				
 				// Si hay ninguna acción que hacer ...
 				if (dtoPrintAction != null)
@@ -80,7 +86,7 @@ public class Print
 					log.info("Se ha encontrado una tarea para imprimir: {}", dtoPrintAction) ;
 					
 					// Imprimimos
-					this.imprimirInternal(httpClient, dtoPrintAction) ;	
+					this.imprimirInternal(closeableHttpClient, dtoPrintAction) ;	
 				}
 			}
 			catch (PrinterClientException | BaseServerException reaktorException)
@@ -91,7 +97,7 @@ public class Print
 			try
 			{
 				// Cerramos el CloseableHttpClient
-				httpClient.close() ;
+				closeableHttpClient.close() ;
 			}
 			catch (IOException ioException)
 			{
@@ -101,13 +107,13 @@ public class Print
 			log.info("PRINT - FIN - Comprobación de si hay algo para imprimir") ;
 	    }
 	}
-
+	
 	/**
-	 * @param httpClient HTTP Client
+	 * @param closeableHttpClient Closeable HTTP Client
 	 * @param dtoPrintAction tarea para imprimir
 	 * @throws PrinterClientException con un error
 	 */
-	private void imprimirInternal(CloseableHttpClient httpClient, DtoPrintAction dtoPrintAction)
+	private void imprimirInternal(CloseableHttpClient closeableHttpClient, DtoPrintAction dtoPrintAction)
 	{
 		try
 		{
@@ -115,7 +121,7 @@ public class Print
 			this.imprimirDocumento(dtoPrintAction) ;
 			
 			// Enviamos la respuesta al servidor de que todo ha ido bien
-			this.enviarRespuestaAlServidor(httpClient, dtoPrintAction, null) ;
+			this.enviarRespuestaAlServidor(closeableHttpClient, dtoPrintAction, null) ;
 			
 			// Logueamos
 			log.info("Se ha enviado respuesta al servidor de la tarea impresa correctamente: {}", dtoPrintAction) ;
@@ -125,7 +131,7 @@ public class Print
 			try
 			{
 				// Enviamos la respuesta al servidor de que ha habido un error
-				this.enviarRespuestaAlServidor(httpClient, dtoPrintAction, printerClientException) ;
+				this.enviarRespuestaAlServidor(closeableHttpClient, dtoPrintAction, printerClientException) ;
 				
 				// Logueamos
 				log.info("Se ha enviado respuesta al servidor de la tarea NO impresa: {}", dtoPrintAction) ;
@@ -143,12 +149,13 @@ public class Print
 	}
 	
 	/**
-	 * @param httpClient HTTP Client
+	 * @param closeableHttpClient Closeable HTTP Client
 	 * @return tarea para imprimir
 	 * @throws PrinterClientException con un error
 	 * @throws BaseServerException con un error al obtener el token JWT
 	 */
-	private DtoPrintAction buscarTareaParaImprimir(CloseableHttpClient httpClient) throws PrinterClientException, BaseServerException
+	private DtoPrintAction buscarTareaParaImprimir(CloseableHttpClient closeableHttpClient) 
+			throws PrinterClientException, BaseServerException
 	{
 		DtoPrintAction outcome = null ;
 		CloseableHttpResponse closeableHttpResponse = null ;
@@ -159,10 +166,10 @@ public class Print
 			HttpGet httpGet = new HttpGet(this.printersServerUrl + "/printers/client/print") ;
 			
 			// Añadimos el token a la llamada
-			httpGet.addHeader("Authorization", "Bearer " + this.authorizationService.obtenerTokenPersonalizado()) ;
+			httpGet.addHeader("Authorization", "Bearer " + this.authorizationService.obtenerTokenPersonalizado(this.httpConnectionTimeout)) ;
 			
 			// Hacemos la peticion
-			closeableHttpResponse = httpClient.execute(httpGet) ;
+			closeableHttpResponse = closeableHttpClient.execute(httpGet) ;
 			
 			// Comprobamos si viene la cabecera. En caso afirmativo, es porque trae un fichero a imprimir
 			if (closeableHttpResponse.containsHeader(Constants.HEADER_PRINT_CONTENT_DISPOSITION))
@@ -195,6 +202,20 @@ public class Print
 				this.copiarContenidoInputStreamOriginal(outcome, contenidoFicheroOriginal) ;				
 			}
 		}
+		catch (SocketTimeoutException socketTimeoutException)
+		{
+			String errorString = "SocketTimeoutException de lectura o escritura al comunicarse con el servidor (búsqueda de tarea de impresión)" ;
+			
+			log.error(errorString, socketTimeoutException) ;
+			throw new PrinterClientException(errorString, socketTimeoutException) ;
+        }
+		catch (ConnectTimeoutException connectTimeoutException)
+		{
+			String errorString = "ConnectTimeoutException al intentar conectar con el servidor (búsqueda de tarea de impresión)" ;
+			
+			log.error(errorString, connectTimeoutException) ;
+			throw new PrinterClientException(errorString, connectTimeoutException) ;
+        }
 		catch (IOException ioException)
 		{
 			String errorString = "IOException mientras se buscaba la tarea para imprimir en el servidor" ;
@@ -500,13 +521,13 @@ public class Print
 	}
 	
 	/**
-	 * @param httpClient HTTP Client
+	 * @param closeableHttpClient Closeable HTTP Client
 	 * @param dtoPrintAction DTO Print Action
 	 * @param printerClientException printer client Exception
 	 * @throws PrinterClientException error al enviar la respuesta
 	 * @throws BaseServerException con un error al obtener el token JWT
 	 */
-	private void enviarRespuestaAlServidor(CloseableHttpClient httpClient,
+	private void enviarRespuestaAlServidor(CloseableHttpClient closeableHttpClient,
 										   DtoPrintAction dtoPrintAction,
 										   PrinterClientException printerClientException) throws PrinterClientException, BaseServerException
 	{
@@ -517,7 +538,7 @@ public class Print
 		postRequest.addHeader(Constants.HEADER_PRINT_ID, dtoPrintAction.getId()) ;
 		
 		// Añadimos el token a la llamada
-		postRequest.addHeader("Authorization", "Bearer " + this.authorizationService.obtenerTokenPersonalizado()) ;
+		postRequest.addHeader("Authorization", "Bearer " + this.authorizationService.obtenerTokenPersonalizado(this.httpConnectionTimeout)) ;
 		
 		if (printerClientException == null)
 		{
@@ -533,8 +554,22 @@ public class Print
 		try
 		{
 			// Enviamos la respuesta al cliente en una request
-			httpClient.execute(postRequest) ;
+			closeableHttpClient.execute(postRequest) ;
 		}
+		catch (SocketTimeoutException socketTimeoutException)
+		{
+			String errorString = "SocketTimeoutException de lectura o escritura al comunicarse con el servidor (envío de la respuesta de impresión)" ;
+			
+			log.error(errorString, socketTimeoutException) ;
+			throw new PrinterClientException(errorString, socketTimeoutException) ;
+        }
+		catch (ConnectTimeoutException connectTimeoutException)
+		{
+			String errorString = "ConnectTimeoutException al intentar conectar con el servidor (envío de la respuesta de impresión)" ;
+			
+			log.error(errorString, connectTimeoutException) ;
+			throw new PrinterClientException(errorString, connectTimeoutException) ;
+        }
 		catch (IOException ioException)
 		{
 			String errorString = "IOException mientras se enviaba la respuesta al servidor" ;
