@@ -17,4 +17,4 @@ reaktor:
   threadsNumber: 10
   http_connection_timeout: 30000
   print_timeout: 60000
-  clientId: 571e2ea0-dbd9-459e-a8e8-eab6221047fb
+  clientId: INTRODUCIR_VALOR
