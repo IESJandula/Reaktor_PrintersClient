@@ -1,4 +1,4 @@
-package es.iesjandula.reaktor_printers_client.configurations;
+package es.iesjandula.reaktor.printers_client.configurations;
 
 import java.io.File;
 import java.net.URL;
@@ -9,7 +9,7 @@ import es.iesjandula.reaktor.base.resources_handler.ResourcesHandler;
 import es.iesjandula.reaktor.base.resources_handler.ResourcesHandlerFile;
 import es.iesjandula.reaktor.base.resources_handler.ResourcesHandlerJar;
 import es.iesjandula.reaktor.base.utils.BaseException;
-import es.iesjandula.reaktor_printers_client.utils.Constants;
+import es.iesjandula.reaktor.printers_client.utils.Constants;
 import jakarta.annotation.PostConstruct;
 
 /**

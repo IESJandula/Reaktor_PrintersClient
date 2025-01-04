@@ -1,4 +1,4 @@
-package es.iesjandula.reaktor_printers_client.scheduled_tasks;
+package es.iesjandula.reaktor.printers_client.scheduled_tasks;
 
 import java.awt.print.PageFormat;
 import java.awt.print.PrinterException;
@@ -15,7 +15,7 @@ import org.apache.pdfbox.printing.PDFPageable;
 import org.apache.pdfbox.printing.PDFPrintable;
 import org.apache.pdfbox.printing.Scaling;
 
-import es.iesjandula.reaktor_printers_client.dto.DtoPrintAction;
+import es.iesjandula.reaktor.printers_client.dto.DtoPrintAction;
 import lombok.extern.slf4j.Slf4j;
 
 /**

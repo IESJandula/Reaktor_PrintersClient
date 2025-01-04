@@ -1,4 +1,4 @@
-package es.iesjandula.reaktor_printers_client.scheduled_tasks;
+package es.iesjandula.reaktor.printers_client.scheduled_tasks;
 
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
@@ -28,11 +28,11 @@ import org.springframework.stereotype.Component;
 import es.iesjandula.reaktor.base_client.security.service.AuthorizationService;
 import es.iesjandula.reaktor.base_client.utils.BaseClientException;
 import es.iesjandula.reaktor.base_client.utils.HttpClientUtils;
-import es.iesjandula.reaktor_printers_client.dto.DtoPrintAction;
-import es.iesjandula.reaktor_printers_client.dto.DtoPrinter;
-import es.iesjandula.reaktor_printers_client.utils.Constants;
-import es.iesjandula.reaktor_printers_client.utils.PrinterClientException;
-import es.iesjandula.reaktor_printers_client.utils.PrinterInfoService;
+import es.iesjandula.reaktor.printers_client.dto.DtoPrintAction;
+import es.iesjandula.reaktor.printers_client.dto.DtoPrinter;
+import es.iesjandula.reaktor.printers_client.utils.Constants;
+import es.iesjandula.reaktor.printers_client.utils.PrinterClientException;
+import es.iesjandula.reaktor.printers_client.utils.PrinterInfoService;
 import lombok.extern.slf4j.Slf4j;
 
 /**

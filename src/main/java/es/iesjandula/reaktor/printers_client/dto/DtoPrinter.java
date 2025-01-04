@@ -1,4 +1,4 @@
-package es.iesjandula.reaktor_printers_client.dto;
+package es.iesjandula.reaktor.printers_client.dto;
 
 import java.util.Date;
 

@@ -1,4 +1,4 @@
-package es.iesjandula.reaktor_printers_client;
+package es.iesjandula.reaktor.printers_client;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

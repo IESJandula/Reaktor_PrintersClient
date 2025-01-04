@@ -1,4 +1,4 @@
-package es.iesjandula.reaktor_printers_client.utils;
+package es.iesjandula.reaktor.printers_client.utils;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
