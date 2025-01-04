@@ -1,19 +1,20 @@
 server:
   port: 8081
 logging:
-    level:
-        root: INFO
-    file:
-        name: C:\logs\reaktor_reaktor_printersclient.log
-        max-size: 1MB
-        max-history: 10
-        total-size-cap: 10MB
+  level:
+    root: INFO
+  file:
+    name: C:\logs\reaktor_reaktor_printersclient.log
+    max-size: 1MB
+    max-history: 10
+    total-size-cap: 10MB
 reaktor:
   publicKeyFile: ${PUBLIC_KEY_FILE}
-  cron: "*/30 * 7-19 * * MON-FRI"
-  bannedPrinters: Microsoft XPS Document Writer, Fax, OneNote for Windows 10, Send To OneNote 2016, Microsoft Print to PDF, AnyDesk Printer, OneNote (Desktop)
+  cron: "*/30 * 7-20 * * MON-FRI"
+  bannedPrinters: Microsoft XPS Document Writer, Fax, OneNote for Windows 10, Send To OneNote 2016, AnyDesk Printer, OneNote (Desktop)
   printers_server_url: "https://api.iesjandula.es/"
   firebase_server_url: "https://api.iesjandula.es/"
-  uidFile: C:\claves\uid_file.txt
   threadsNumber: 10
-  print_timeout: 30000
+  http_connection_timeout: 30000
+  print_timeout: 60000
+  clientId: 571e2ea0-dbd9-459e-a8e8-eab6221047fb

@@ -25,9 +25,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import es.iesjandula.base.base_server.security.service.AuthorizationService;
-import es.iesjandula.base.base_server.utils.BaseServerException;
-import es.iesjandula.base.base_server.utils.HttpClientUtils;
+import es.iesjandula.reaktor.base_client.security.service.AuthorizationService;
+import es.iesjandula.reaktor.base_client.utils.BaseClientException;
+import es.iesjandula.reaktor.base_client.utils.HttpClientUtils;
 import es.iesjandula.reaktor_printers_client.dto.DtoPrintAction;
 import es.iesjandula.reaktor_printers_client.dto.DtoPrinter;
 import es.iesjandula.reaktor_printers_client.utils.Constants;
@@ -89,7 +89,7 @@ public class Print
 					this.imprimirInternal(closeableHttpClient, dtoPrintAction) ;	
 				}
 			}
-			catch (PrinterClientException | BaseServerException reaktorException)
+			catch (PrinterClientException | BaseClientException reaktorException)
 			{
 				// Logueada previamente en el método
 			}
@@ -136,12 +136,12 @@ public class Print
 				// Logueamos
 				log.info("Se ha enviado respuesta al servidor de la tarea NO impresa: {}", dtoPrintAction) ;
 			}
-			catch (PrinterClientException | BaseServerException reaktorException)
+			catch (PrinterClientException | BaseClientException reaktorException)
 			{
 				// Logueada previamente en el método
 			}			
 		}
-		catch (BaseServerException e)
+		catch (BaseClientException baseClientException)
 		{
 			// Logueada previamente en el método
 			// No podemos hacer más ya que es un problema con el JWT
@@ -152,10 +152,10 @@ public class Print
 	 * @param closeableHttpClient Closeable HTTP Client
 	 * @return tarea para imprimir
 	 * @throws PrinterClientException con un error
-	 * @throws BaseServerException con un error al obtener el token JWT
+	 * @throws BaseClientException con un error al obtener el token JWT
 	 */
 	private DtoPrintAction buscarTareaParaImprimir(CloseableHttpClient closeableHttpClient) 
-			throws PrinterClientException, BaseServerException
+			throws PrinterClientException, BaseClientException
 	{
 		DtoPrintAction outcome = null ;
 		CloseableHttpResponse closeableHttpResponse = null ;
@@ -525,11 +525,11 @@ public class Print
 	 * @param dtoPrintAction DTO Print Action
 	 * @param printerClientException printer client Exception
 	 * @throws PrinterClientException error al enviar la respuesta
-	 * @throws BaseServerException con un error al obtener el token JWT
+	 * @throws BaseClientException con un error al obtener el token JWT
 	 */
 	private void enviarRespuestaAlServidor(CloseableHttpClient closeableHttpClient,
 										   DtoPrintAction dtoPrintAction,
-										   PrinterClientException printerClientException) throws PrinterClientException, BaseServerException
+										   PrinterClientException printerClientException) throws PrinterClientException, BaseClientException
 	{
 		// Devolvemos el resultado al servidor
 		HttpPost postRequest = new HttpPost(this.printersServerUrl + "/printers/client/status") ;

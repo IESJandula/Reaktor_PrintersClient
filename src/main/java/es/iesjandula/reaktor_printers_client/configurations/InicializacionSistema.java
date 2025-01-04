@@ -5,10 +5,10 @@ import java.net.URL;
 
 import org.springframework.stereotype.Service;
 
-import es.iesjandula.base.base_server.resources_handler.ResourcesHandler;
-import es.iesjandula.base.base_server.resources_handler.ResourcesHandlerFile;
-import es.iesjandula.base.base_server.resources_handler.ResourcesHandlerJar;
-import es.iesjandula.base.base_server.utils.BaseServerException;
+import es.iesjandula.reaktor.base.resources_handler.ResourcesHandler;
+import es.iesjandula.reaktor.base.resources_handler.ResourcesHandlerFile;
+import es.iesjandula.reaktor.base.resources_handler.ResourcesHandlerJar;
+import es.iesjandula.reaktor.base.utils.BaseException;
 import es.iesjandula.reaktor_printers_client.utils.Constants;
 import jakarta.annotation.PostConstruct;
 
@@ -21,10 +21,10 @@ public class InicializacionSistema
 	/**
 	 * Este método se encarga de inicializar el sistema
 	 * ya sea en el entorno de desarrollo o ejecutando JAR
-	 * @throws BaseServerException con una excepción cargando las carpetas de resources
+	 * @throws BaseException con una excepción cargando las carpetas de resources
 	 */
 	@PostConstruct
-	public void inicializarSistema() throws BaseServerException
+	public void inicializarSistema() throws BaseException
 	{
 		// Esta es la carpeta con las subcarpetas y configuraciones
 	    ResourcesHandler printersClientConfig = this.getResourcesHandler(Constants.PRINTERS_CLIENT_CONFIG);
