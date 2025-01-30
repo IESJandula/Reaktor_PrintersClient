@@ -25,9 +25,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import es.iesjandula.reaktor.base.utils.HttpClientUtils;
 import es.iesjandula.reaktor.base_client.security.service.AuthorizationService;
 import es.iesjandula.reaktor.base_client.utils.BaseClientException;
-import es.iesjandula.reaktor.base_client.utils.HttpClientUtils;
 import es.iesjandula.reaktor.printers_client.dto.DtoPrintAction;
 import es.iesjandula.reaktor.printers_client.dto.DtoPrinter;
 import es.iesjandula.reaktor.printers_client.utils.Constants;

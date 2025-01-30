@@ -23,9 +23,9 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import es.iesjandula.reaktor.base.utils.HttpClientUtils;
 import es.iesjandula.reaktor.base_client.security.service.AuthorizationService;
 import es.iesjandula.reaktor.base_client.utils.BaseClientException;
-import es.iesjandula.reaktor.base_client.utils.HttpClientUtils;
 import es.iesjandula.reaktor.printers_client.dto.DtoPrinter;
 import es.iesjandula.reaktor.printers_client.utils.PrinterClientException;
 import es.iesjandula.reaktor.printers_client.utils.PrinterInfoService;
