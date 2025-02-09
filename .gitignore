@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Reaktor ###
+printers_client_config_exec/
