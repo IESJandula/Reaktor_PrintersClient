@@ -21,7 +21,7 @@ namespace ConsoleApp1
             {
                 Console.WriteLine(printer["PrinterState"]); // Estado de la conexión de la impresora
                 Console.WriteLine(ConvertStatus(printer["PrinterState"].ToString())); // Estado de la conexión de la impresora
-                ManagementObjectSearcher jobSearcher = new ManagementObjectSearcher("SELECT * FROM Win32_PrintJob WHERE Name='" + printerName + "'");
+                ManagementObjectSearcher jobSearcher = new ManagementObjectSearcher("SELECT * FROM Win32_PrintJob WHERE Name LIKE '%" + printerName + "%'");
                 int jobCount = jobSearcher.Get().Count;
                 Console.WriteLine(jobCount);
                 string printerPortName = printer["PortName"].ToString();

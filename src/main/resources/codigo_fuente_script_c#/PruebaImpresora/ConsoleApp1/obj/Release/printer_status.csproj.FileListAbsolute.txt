@@ -1,0 +1,7 @@
+C:\Users\Arduino\git\Reaktor_PrintersClient\src\main\resources\codigo_fuente_script_c#\PruebaImpresora\ConsoleApp1\bin\Release\ConsoleApp1.exe.config
+C:\Users\Arduino\git\Reaktor_PrintersClient\src\main\resources\codigo_fuente_script_c#\PruebaImpresora\ConsoleApp1\bin\Release\ConsoleApp1.exe
+C:\Users\Arduino\git\Reaktor_PrintersClient\src\main\resources\codigo_fuente_script_c#\PruebaImpresora\ConsoleApp1\bin\Release\ConsoleApp1.pdb
+C:\Users\Arduino\git\Reaktor_PrintersClient\src\main\resources\codigo_fuente_script_c#\PruebaImpresora\ConsoleApp1\obj\Release\printer_status.csproj.AssemblyReference.cache
+C:\Users\Arduino\git\Reaktor_PrintersClient\src\main\resources\codigo_fuente_script_c#\PruebaImpresora\ConsoleApp1\obj\Release\printer_status.csproj.CoreCompileInputs.cache
+C:\Users\Arduino\git\Reaktor_PrintersClient\src\main\resources\codigo_fuente_script_c#\PruebaImpresora\ConsoleApp1\obj\Release\ConsoleApp1.exe
+C:\Users\Arduino\git\Reaktor_PrintersClient\src\main\resources\codigo_fuente_script_c#\PruebaImpresora\ConsoleApp1\obj\Release\ConsoleApp1.pdb

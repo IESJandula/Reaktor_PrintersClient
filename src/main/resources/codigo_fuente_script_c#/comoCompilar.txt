@@ -1,0 +1,17 @@
+Se necesita la instalación de este software:
+
+https://dotnet.microsoft.com/es-es/download/dotnet-framework/thank-you/net472-developer-pack-offline-installer
+
+Además, se necesita esto:
+
+https://visualstudio.microsoft.com/es/visual-cpp-build-tools/
+
+Una vez instalado, se puede añadir por PATH "MSBuild.exe" de esta ruta:
+
+C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe
+
+o ejecutarlo directamente:
+
+C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin>MSBuild C:\Users\Arduino\git\Reaktor_PrintersClient\src\main\resources\codigo_fuente_script_c#\PruebaImpresora\ConsoleApp1\printer_status.csproj /p:Configuration=Release
+
+Después, hay que mover el .exe a la carpeta "printers_client_config"
