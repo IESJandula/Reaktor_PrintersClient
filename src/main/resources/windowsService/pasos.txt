@@ -1,3 +1,5 @@
+Si existe el servicio y quieres borrarlo: nssm remove <nombre_servicio_windows>
+
 nssm install Reaktor_PrintersClient
 
 Application Path: C:\Program Files\Java\jdk-17.0.2\bin\javaw.exe
