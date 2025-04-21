@@ -10,7 +10,7 @@ logging:
     total-size-cap: 10MB
 reaktor:
   publicKeyFile: C:\claves\public_key.pem
-  cron: "*/30 * 7-20 * * MON-FRI"
+  cron: "*/30 * 7-20 * * MON-SUN"
   bannedPrinters: Microsoft XPS Document Writer, Fax, OneNote for Windows 10, Send To OneNote 2016, AnyDesk Printer, OneNote (Desktop), Microsoft Print to PDF
   printers_server_url: "http://localhost:8082/"
   firebase_server_url: "http://localhost:8083/"
