@@ -32,6 +32,9 @@ public class Constants
 
 	/** Constante - Header - Caras */
 	public static final String HEADER_PRINT_SIDES = "sides" ;
+
+	/** Constante - Header - Grapas */
+	public static final String HEADER_PRINT_STAPLING = "stapling" ;
 	
 	/** Constante - Header - Páginas Seleccionadas */
 	public static final String HEADER_PRINT_SELECTED_PAGES = "selectedPages" ;

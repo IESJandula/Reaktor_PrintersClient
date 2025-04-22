@@ -37,6 +37,9 @@ public class DtoPrintAction
     /** Atributo - Páginas seleccionadas */
     private String selectedPages ;
 
+    /** Atributo - Stapling */
+    private Boolean stapling;
+
     /** Atributo - Contenido del fichero */
     private InputStream contenidoFichero ;
 
@@ -215,6 +218,21 @@ public class DtoPrintAction
 	{
 		this.twoSides = twoSides ;
 	}
+
+    /**
+     * @return the stapling
+     */
+    public Boolean getStapling() {
+        return this.stapling;
+    }
+
+    /**
+     * @param staple the staple to set
+     */
+    public void setStapling(Boolean stapling)
+    {
+        this.stapling = stapling;
+    }
 
 	/**
 	 * @return the selectedPages
