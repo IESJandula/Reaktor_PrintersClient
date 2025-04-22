@@ -7,6 +7,7 @@ import java.awt.print.PrinterJob;
 import javax.print.attribute.HashPrintRequestAttributeSet;
 import javax.print.attribute.standard.Chromaticity;
 import javax.print.attribute.standard.Copies;
+import javax.print.attribute.standard.Finishings;
 import javax.print.attribute.standard.OrientationRequested;
 import javax.print.attribute.standard.Sides;
 
@@ -108,6 +109,24 @@ public class PrintThread extends Thread
 		{
 			outcome.add(Sides.ONE_SIDED);
 		}
+
+		// Configuramos grapado
+		if (this.dtoPrintAction.getStapling())
+		{
+			if (this.dtoPrintAction.getVertical())
+			{
+				outcome.add(Finishings.STAPLE_TOP_LEFT);
+			}
+			else
+			{
+				outcome.add(Finishings.STAPLE_BOTTOM_LEFT);
+			}
+		}
+		else
+		{
+			outcome.add(Finishings.NONE);
+		}
+
 		
 		// Configuramos copias
 		outcome.add(new Copies(this.dtoPrintAction.getCopies())) ;
