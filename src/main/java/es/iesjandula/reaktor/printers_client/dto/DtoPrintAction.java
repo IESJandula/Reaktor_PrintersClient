@@ -33,6 +33,9 @@ public class DtoPrintAction
 
     /** Atributo - Sides */
     private Boolean twoSides ;
+    
+    /** Atributo - Páginas seleccionadas */
+    private String selectedPages ;
 
     /** Atributo - Contenido del fichero */
     private InputStream contenidoFichero ;
@@ -214,6 +217,22 @@ public class DtoPrintAction
 	}
 
 	/**
+	 * @return the selectedPages
+	 */
+	public String getSelectedPages()
+	{
+		return this.selectedPages ;
+	}
+
+	/**
+	 * @param selectedPages the selectedPages to set
+	 */
+	public void setSelectedPages(String selectedPages)
+	{
+		this.selectedPages = selectedPages ;
+	}
+
+	/**
 	 * @return the contenidoFichero
 	 */
 	public InputStream getContenidoFichero()
@@ -260,6 +279,9 @@ public class DtoPrintAction
 		
 		builder.append(", twoSides=") ;
 		builder.append(this.twoSides) ;
+		
+		builder.append(", selectedPages=") ;
+		builder.append(this.selectedPages) ;
 		
 		builder.append("]") ;
 		

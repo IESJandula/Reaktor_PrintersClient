@@ -33,6 +33,9 @@ public class Constants
 	/** Constante - Header - Caras */
 	public static final String HEADER_PRINT_SIDES = "sides" ;
 	
+	/** Constante - Header - Páginas Seleccionadas */
+	public static final String HEADER_PRINT_SELECTED_PAGES = "selectedPages" ;
+	
 	/*********************************************************/
 	/******************* Response Server *********************/
 	/*********************************************************/

@@ -182,6 +182,12 @@ public class Print
 				Boolean blackAndWhite = Boolean.valueOf(closeableHttpResponse.getFirstHeader(Constants.HEADER_PRINT_COLOR).getValue()) ;
 				Boolean vertical 	  = Boolean.valueOf(closeableHttpResponse.getFirstHeader(Constants.HEADER_PRINT_ORIENTATION).getValue()) ;
 				Boolean twoSides 	  = Boolean.valueOf(closeableHttpResponse.getFirstHeader(Constants.HEADER_PRINT_SIDES).getValue()) ;
+				
+				// Get selected pages if present
+				String selectedPages = null;
+				if (closeableHttpResponse.containsHeader(Constants.HEADER_PRINT_SELECTED_PAGES)) {
+					selectedPages = closeableHttpResponse.getFirstHeader(Constants.HEADER_PRINT_SELECTED_PAGES).getValue();
+				}
 			
 				// Creamos una nueva instancia de DtoPrintAction
 				outcome = new DtoPrintAction() ;
@@ -194,6 +200,7 @@ public class Print
 				outcome.setBlackAndWhite(blackAndWhite) ;
 				outcome.setVertical(vertical) ;
 				outcome.setTwoSides(twoSides) ;
+				outcome.setSelectedPages(selectedPages) ;
 				
 				// Obtenemos el contenido del documento a imprimir
 				contenidoFicheroOriginal = closeableHttpResponse.getEntity().getContent() ;
