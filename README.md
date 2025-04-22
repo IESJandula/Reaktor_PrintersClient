@@ -76,7 +76,7 @@ Las variables anotadas con `@Value` en este proyecto deben configurarse adecuada
 
 ## Dependencias
 
-Este proyecto depende de [BaseServer](https://github.com/IESJandula/Base_Server/) para funcionalidades básicas como la autorización, almacenamiento de sesión y actualización de JARs.
+Este proyecto depende de [BaseServer](https://github.com/IESJandula/Reaktor_BaseServer/) para funcionalidades básicas como la autorización, almacenamiento de sesión y actualización de JARs.
 
 ## Creación de Elementos en la Colección de Firebase
 
