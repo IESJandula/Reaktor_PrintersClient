@@ -99,6 +99,9 @@ public class PrintThread extends Thread
 	        String selectedPagesStr = this.dtoPrintAction.getSelectedPages();
 	        log.info("Imprimiendo páginas seleccionadas: {}", selectedPagesStr);
 	        
+	        // Preprocesar la cadena para eliminar cualquier formato JSON
+	        selectedPagesStr = preprocessSelectedPagesString(selectedPagesStr);
+	        
 	        // Crear un array para marcar qué páginas imprimir
 	        boolean[] pagesToPrint = new boolean[this.pdDocument.getNumberOfPages()];
 	        
@@ -106,6 +109,10 @@ public class PrintThread extends Thread
 	        String[] parts = selectedPagesStr.split(",");
 	        for (String part : parts) {
 	            part = part.trim();
+	            if (part.isEmpty()) {
+	                continue;
+	            }
+	            
 	            if (part.contains("-")) {
 	                // Rango de páginas
 	                String[] range = part.split("-");
@@ -122,11 +129,15 @@ public class PrintThread extends Thread
 	                }
 	            } else {
 	                // Página individual
-	                int pageIndex = Integer.parseInt(part) - 1; // Convertir a índice base 0
-	                
-	                // Validar índice de página
-	                if (pageIndex >= 0 && pageIndex < pdDocument.getNumberOfPages()) {
-	                    pagesToPrint[pageIndex] = true;
+	                try {
+	                    int pageIndex = Integer.parseInt(part) - 1; // Convertir a índice base 0
+	                    
+	                    // Validar índice de página
+	                    if (pageIndex >= 0 && pageIndex < pdDocument.getNumberOfPages()) {
+	                        pagesToPrint[pageIndex] = true;
+	                    }
+	                } catch (NumberFormatException e) {
+	                    log.warn("No se pudo parsear el número de página: {}", part);
 	                }
 	            }
 	        }
@@ -163,6 +174,24 @@ public class PrintThread extends Thread
 	        log.error("Error al imprimir páginas seleccionadas", e);
 	        throw new PrinterException("Error al imprimir páginas seleccionadas: " + e.getMessage());
 	    }
+	}
+	
+	/**
+	 * Preprocesa la cadena de páginas seleccionadas para eliminar cualquier formato JSON
+	 * 
+	 * @param input la cadena de entrada que podría estar en formato JSON
+	 * @return una cadena limpia con solo los números y rangos separados por comas
+	 */
+	private String preprocessSelectedPagesString(String input) {
+	    if (input == null || input.isEmpty()) {
+	        return "";
+	    }
+	    
+	    // Eliminar corchetes de array JSON si están presentes
+	    String processed = input.replaceAll("\\[|\\]|\"", "");
+	    
+	    log.info("Cadena de páginas procesada: {}", processed);
+	    return processed;
 	}
 	
 	/**
