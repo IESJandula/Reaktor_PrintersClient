@@ -77,9 +77,12 @@ public class PrintThread extends Thread
 	    log.info("PRINT - IMPRESION - Se va a enviar a la cola de impresión") ;
 
 	    // Si hay páginas seleccionadas, configuramos solo esas páginas para imprimir
-	    if (this.dtoPrintAction.getSelectedPages() != null && !this.dtoPrintAction.getSelectedPages().isEmpty()) {
+	    if (this.dtoPrintAction.getSelectedPages() != null && !this.dtoPrintAction.getSelectedPages().isEmpty())
+		{
 	        this.imprimirPaginasSeleccionadas(attributeSetDocumentoPrincipal);
-	    } else {
+	    }
+		else
+		{
 	        // Imprimimos el documento completo
 	        this.printerJob.print(attributeSetDocumentoPrincipal);
 	    }
@@ -94,8 +97,10 @@ public class PrintThread extends Thread
 	 * @param attributeSetDocumentoPrincipal conjunto de atributos de impresión
 	 * @throws PrinterException si hay un error durante la impresión
 	 */
-	private void imprimirPaginasSeleccionadas(HashPrintRequestAttributeSet attributeSetDocumentoPrincipal) throws PrinterException {
-	    try {
+	private void imprimirPaginasSeleccionadas(HashPrintRequestAttributeSet attributeSetDocumentoPrincipal) throws PrinterException
+	{
+	    try
+		{
 	        // Obtener la cadena de páginas seleccionadas (formato: "1,3,5-7,9")
 	        String selectedPagesStr = this.dtoPrintAction.getSelectedPages();
 	        log.info("Imprimiendo páginas seleccionadas: {}", selectedPagesStr);
@@ -108,45 +113,56 @@ public class PrintThread extends Thread
 	        
 	        // Procesar la cadena de páginas seleccionadas
 	        String[] parts = selectedPagesStr.split(",");
-	        for (String part : parts) {
+	        for (String part : parts)
+			{
 	            part = part.trim();
-	            if (part.isEmpty()) {
-	                continue;
-	            }
+	            if (!part.isEmpty())
+				{
 	            
-	            if (part.contains("-")) {
-	                // Rango de páginas
-	                String[] range = part.split("-");
-	                int start = Integer.parseInt(range[0].trim()) - 1; // Convertir a índice base 0
-	                int end = Integer.parseInt(range[1].trim()) - 1;
-	                
-	                // Validar rango
-	                start = Math.max(0, start);
-	                end = Math.min(pdDocument.getNumberOfPages() - 1, end);
-	                
-	                // Marcar todas las páginas en el rango
-	                for (int i = start; i <= end; i++) {
-	                    pagesToPrint[i] = true;
-	                }
-	            } else {
-	                // Página individual
-	                try {
-	                    int pageIndex = Integer.parseInt(part) - 1; // Convertir a índice base 0
-	                    
-	                    // Validar índice de página
-	                    if (pageIndex >= 0 && pageIndex < pdDocument.getNumberOfPages()) {
-	                        pagesToPrint[pageIndex] = true;
-	                    }
-	                } catch (NumberFormatException e) {
-	                    log.warn("No se pudo parsear el número de página: {}", part);
-	                }
-	            }
+					if (part.contains("-"))
+					{
+						// Rango de páginas
+						String[] range = part.split("-");
+						int start = Integer.parseInt(range[0].trim()) - 1; // Convertir a índice base 0
+						int end = Integer.parseInt(range[1].trim()) - 1;
+						
+						// Validar rango
+						start = Math.max(0, start);
+						end = Math.min(pdDocument.getNumberOfPages() - 1, end);
+						
+						// Marcar todas las páginas en el rango
+						for (int i = start; i <= end; i++)
+						{
+							pagesToPrint[i] = true;
+						}
+					}
+					else
+					{
+						// Página individual
+						try
+						{
+							int pageIndex = Integer.parseInt(part) - 1; // Convertir a índice base 0
+							
+							// Validar índice de página
+							if (pageIndex >= 0 && pageIndex < pdDocument.getNumberOfPages())
+							{
+								pagesToPrint[pageIndex] = true;
+							}
+						}
+						catch (NumberFormatException e)
+						{
+							log.warn("No se pudo parsear el número de página: {}", part);
+						}
+					}
+				}
 	        }
 	        
 	        // Crear un nuevo documento con solo las páginas seleccionadas
 	        PDDocument selectedPagesDoc = new PDDocument();
-	        for (int i = 0; i < pagesToPrint.length; i++) {
-	            if (pagesToPrint[i]) {
+	        for (int i = 0; i < pagesToPrint.length; i++)
+			{
+	            if (pagesToPrint[i])
+				{
 	                selectedPagesDoc.importPage(pdDocument.getPage(i));
 	            }
 	        }
@@ -156,12 +172,15 @@ public class PrintThread extends Thread
 	        selectedPrinterJob.setPrintService(this.printerJob.getPrintService());
 	        
 	        // Utilizar la misma configuración de orientación
-	        if (this.dtoPrintAction.getVertical()) {
+	        if (this.dtoPrintAction.getVertical())
+			{
 	            PDFPageable pageable = new PDFPageable(selectedPagesDoc);
 	            PageFormat format = pageable.getPageFormat(0);
 	            format.setOrientation(PageFormat.PORTRAIT);
 	            selectedPrinterJob.setPrintable(new PDFPrintable(selectedPagesDoc), format);
-	        } else {
+	        }
+			else
+			{
 	            selectedPrinterJob.setPrintable(new PDFPrintable(selectedPagesDoc, Scaling.SHRINK_TO_FIT));
 	        }
 	        
@@ -171,7 +190,9 @@ public class PrintThread extends Thread
 	        // Cerrar el documento temporal
 	        selectedPagesDoc.close();
 	        
-	    } catch (Exception e) {
+	    }
+		catch (Exception e)
+		{
 	        log.error("Error al imprimir páginas seleccionadas", e);
 	        throw new PrinterException("Error al imprimir páginas seleccionadas: " + e.getMessage());
 	    }
@@ -183,8 +204,10 @@ public class PrintThread extends Thread
 	 * @param input la cadena de entrada que podría estar en formato JSON
 	 * @return una cadena limpia con solo los números y rangos separados por comas
 	 */
-	private String preprocessSelectedPagesString(String input) {
-	    if (input == null || input.isEmpty()) {
+	private String preprocessSelectedPagesString(String input)
+	{
+	    if (input == null || input.isEmpty())
+		{
 	        return "";
 	    }
 	    
