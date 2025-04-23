@@ -244,24 +244,6 @@ public class PrintThread extends Thread
 		{
 			outcome.add(Sides.ONE_SIDED);
 		}
-
-		// Configuramos grapado
-		if (this.dtoPrintAction.getStapling())
-		{
-			if (this.dtoPrintAction.getVertical())
-			{
-				outcome.add(Finishings.STAPLE_TOP_LEFT);
-			}
-			else
-			{
-				outcome.add(Finishings.STAPLE_BOTTOM_LEFT);
-			}
-		}
-		else
-		{
-			outcome.add(Finishings.NONE);
-		}
-
 		
 		// Configuramos copias
 		outcome.add(new Copies(this.dtoPrintAction.getCopies())) ;
