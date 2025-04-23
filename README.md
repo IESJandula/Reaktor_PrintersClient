@@ -1,7 +1,7 @@
 
 # PrintersClient
 
-El proyecto `PrintersClient` es un microservicio diseñado para coordinar con [PrintersServer](https://github.com/IESJandula/Reaktor_PrintersServer) y gestionar las tareas de impresión en una red. Este proyecto depende de [BaseServer](https://github.com/IESJandula/Base_Server/) para funcionalidades comunes. PrintersClient se encarga de forma de periódica de preguntar a PrintersServer si hay tareas de impresión por realizar. Además, informa también de forma periódica el estado de las impresoras.
+El proyecto `PrintersClient` es un microservicio diseñado para coordinar con [PrintersServer](https://github.com/IESJandula/Reaktor_PrintersServer) y gestionar las tareas de impresión en una red. Este proyecto depende de [BaseServer](https://github.com/IESJandula/Reaktor_BaseServer/) para funcionalidades comunes. PrintersClient se encarga de forma de periódica de preguntar a PrintersServer si hay tareas de impresión por realizar. Además, informa también de forma periódica el estado de las impresoras.
 
 ## Descripción de los Servicios y Componentes
 
@@ -76,7 +76,7 @@ Las variables anotadas con `@Value` en este proyecto deben configurarse adecuada
 
 ## Dependencias
 
-Este proyecto depende de [BaseServer](https://github.com/IESJandula/Base_Server/) para funcionalidades básicas como la autorización, almacenamiento de sesión y actualización de JARs.
+Este proyecto depende de [BaseServer](https://github.com/IESJandula/Reaktor_BaseServer/) para funcionalidades básicas como la autorización, almacenamiento de sesión y actualización de JARs.
 
 ## Creación de Elementos en la Colección de Firebase
 

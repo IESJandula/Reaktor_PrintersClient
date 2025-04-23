@@ -216,7 +216,6 @@ public class DtoPrintAction
 		this.twoSides = twoSides ;
 	}
 
-
 	/**
 	 * @return the selectedPages
 	 */
