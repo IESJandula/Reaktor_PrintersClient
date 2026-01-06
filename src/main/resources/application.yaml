@@ -14,7 +14,8 @@ reaktor:
   bannedPrinters: Microsoft XPS Document Writer, Fax, OneNote for Windows 10, Send To OneNote 2016, AnyDesk Printer, OneNote (Desktop), Microsoft Print to PDF
   printers_server_url: "http://localhost:8082/"
   firebase_server_url: "http://localhost:8083/"
-  clientId: INTRODUCIR_VALOR
+  notifications_server_url: "http://localhost:8088/"
+  clientId: CLIENTE_IMPRESORA
   threadsNumber: 10
   http_connection_timeout: 30000
   print_timeout: 60000

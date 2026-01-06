@@ -7,7 +7,6 @@ import java.awt.print.PrinterJob;
 import javax.print.attribute.HashPrintRequestAttributeSet;
 import javax.print.attribute.standard.Chromaticity;
 import javax.print.attribute.standard.Copies;
-import javax.print.attribute.standard.Finishings;
 import javax.print.attribute.standard.OrientationRequested;
 import javax.print.attribute.standard.Sides;
 
@@ -115,44 +114,24 @@ public class PrintThread extends Thread
 	        String[] parts = selectedPagesStr.split(",");
 	        for (String part : parts)
 			{
+				// Eliminamos los espacios en blanco
 	            part = part.trim();
 	            if (!part.isEmpty())
 				{
-	            
-					if (part.contains("-"))
+	                // Nunca nos va a venir con guión ya que en cliente se envía las páginas separadas por comas
+					try
 					{
-						// Rango de páginas
-						String[] range = part.split("-");
-						int start = Integer.parseInt(range[0].trim()) - 1; // Convertir a índice base 0
-						int end = Integer.parseInt(range[1].trim()) - 1;
+						int pageIndex = Integer.parseInt(part) - 1; // Convertir a índice base 0
 						
-						// Validar rango
-						start = Math.max(0, start);
-						end = Math.min(pdDocument.getNumberOfPages() - 1, end);
-						
-						// Marcar todas las páginas en el rango
-						for (int i = start; i <= end; i++)
+						// Validar índice de página
+						if (pageIndex >= 0 && pageIndex < pdDocument.getNumberOfPages())
 						{
-							pagesToPrint[i] = true;
+							pagesToPrint[pageIndex] = true;
 						}
 					}
-					else
+					catch (NumberFormatException e)
 					{
-						// Página individual
-						try
-						{
-							int pageIndex = Integer.parseInt(part) - 1; // Convertir a índice base 0
-							
-							// Validar índice de página
-							if (pageIndex >= 0 && pageIndex < pdDocument.getNumberOfPages())
-							{
-								pagesToPrint[pageIndex] = true;
-							}
-						}
-						catch (NumberFormatException e)
-						{
-							log.warn("No se pudo parsear el número de página: {}", part);
-						}
+						log.warn("No se pudo parsear el número de página: {}", part);
 					}
 				}
 	        }
