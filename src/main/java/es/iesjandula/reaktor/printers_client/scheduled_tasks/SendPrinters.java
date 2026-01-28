@@ -23,6 +23,7 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import es.iesjandula.reaktor.base.utils.BaseException;
 import es.iesjandula.reaktor.base.utils.HttpClientUtils;
 import es.iesjandula.reaktor.base_client.security.service.AuthorizationService;
 import es.iesjandula.reaktor.base_client.utils.BaseClientException;
@@ -168,7 +169,7 @@ public class SendPrinters
 		{
 			log.error("IOException mientras se enviaba la petición POST con el estado de las impresoras", ioException) ;
 		}
-		catch (BaseClientException baseClientException)
+		catch (BaseException | BaseClientException reaktorException)
 		{
 			// Excepción logueada previamente
 		}

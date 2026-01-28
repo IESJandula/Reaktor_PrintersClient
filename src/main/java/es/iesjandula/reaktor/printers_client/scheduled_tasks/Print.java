@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import es.iesjandula.reaktor.base.utils.BaseException;
 import es.iesjandula.reaktor.base.utils.HttpClientUtils;
 import es.iesjandula.reaktor.base_client.security.service.AuthorizationService;
 import es.iesjandula.reaktor.base_client.utils.BaseClientException;
@@ -89,7 +90,7 @@ public class Print
 					this.imprimirInternal(closeableHttpClient, dtoPrintAction) ;	
 				}
 			}
-			catch (PrinterClientException | BaseClientException reaktorException)
+			catch (BaseException | PrinterClientException | BaseClientException reaktorException)
 			{
 				// Logueada previamente en el método
 			}
@@ -136,12 +137,12 @@ public class Print
 				// Logueamos
 				log.info("Se ha enviado respuesta al servidor de la tarea NO impresa: {}", dtoPrintAction) ;
 			}
-			catch (PrinterClientException | BaseClientException reaktorException)
+			catch (BaseException | PrinterClientException | BaseClientException reaktorException)
 			{
 				// Logueada previamente en el método
 			}			
 		}
-		catch (BaseClientException baseClientException)
+		catch (BaseException | BaseClientException reaktorException)
 		{
 			// Logueada previamente en el método
 			// No podemos hacer más ya que es un problema con el JWT
@@ -151,11 +152,12 @@ public class Print
 	/**
 	 * @param closeableHttpClient Closeable HTTP Client
 	 * @return tarea para imprimir
+	 * @throws BaseException error al obtener el token personalizado
 	 * @throws PrinterClientException con un error
 	 * @throws BaseClientException con un error al obtener el token JWT
 	 */
 	private DtoPrintAction buscarTareaParaImprimir(CloseableHttpClient closeableHttpClient) 
-			throws PrinterClientException, BaseClientException
+			throws BaseException, PrinterClientException, BaseClientException
 	{
 		DtoPrintAction outcome = null ;
 		CloseableHttpResponse closeableHttpResponse = null ;
@@ -531,12 +533,13 @@ public class Print
 	 * @param closeableHttpClient Closeable HTTP Client
 	 * @param dtoPrintAction DTO Print Action
 	 * @param printerClientException printer client Exception
+	 * @throws BaseException error al obtener el token personalizado
 	 * @throws PrinterClientException error al enviar la respuesta
 	 * @throws BaseClientException con un error al obtener el token JWT
 	 */
 	private void enviarRespuestaAlServidor(CloseableHttpClient closeableHttpClient,
 										   DtoPrintAction dtoPrintAction,
-										   PrinterClientException printerClientException) throws PrinterClientException, BaseClientException
+										   PrinterClientException printerClientException) throws BaseException, PrinterClientException, BaseClientException
 	{
 		// Devolvemos el resultado al servidor
 		HttpPost postRequest = new HttpPost(this.printersServerUrl + "/printers/client/status") ;
